@@ -1,712 +1,200 @@
-<div class="p-4 sm:p-6 lg:p-8">
-    @if (session()->has('message'))
-        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
-             class="mb-4 rounded-md bg-green-50 p-4">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-check-circle text-green-400"></i>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm font-medium text-green-800">{{ session('message') }}</p>
+<div class="container mx-auto px-4 py-8" x-data="{ activeTab: window.location.hash.substring(1) || 'dokumen' }" x-init="$watch('activeTab', value => window.location.hash = value)">
+    <!-- Header Card -->
+    <div class="card mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-[--color-dark]">
+                    {{ $lhp->judul_lhp }}
+                </h1>
+                <div class="flex flex-wrap gap-x-4 gap-y-2 mt-4 text-sm text-gray-700">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[--color-secondary]/30 text-[--color-dark]">
+                        <i class="fas fa-hashtag text-[--color-accent] mr-2"></i>{{ $lhp->nomor_lhp }}
+                    </span>
+                    <span class="flex items-center"><i class="far fa-calendar-alt text-[--color-accent] mr-2"></i>{{ $lhp->tanggal_lhp->translatedFormat('d F Y') }}</span>
+                    <span class="flex items-center"><i class="fas fa-user-tie text-[--color-accent] mr-2"></i>{{ $lhp->user->name ?? 'N/A' }}</span>
                 </div>
             </div>
+            <a href="{{ route('lhps') }}" class="w-full md:w-auto px-6 py-3 bg-[#1B5E20] text-white rounded-xl font-semibold transition-all hover:bg-[#388E3C] hover:shadow-lg hover:scale-105"><i class="fas fa-arrow-left mr-2"></i> Kembali</a>
         </div>
-    @endif
-
-    <div class="mb-6">
-        <div class="flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-gray-900">Detail LHP: {{ $lhp->judul_lhp }}</h1>
-            <a href="{{ route('lhps') }}" class="text-sm text-blue-600 hover:text-blue-800">
-                &larr; Kembali ke Daftar LHP
-            </a>
-        </div>
-        <p class="mt-1 text-sm text-gray-600">Nomor: {{ $lhp->nomor_lhp }} | Tanggal: {{ $lhp->tanggal_lhp->format('d F Y') }}</p>
     </div>
 
-    <form wire:submit.prevent="save">
-        <!-- Group 1: File Uploads -->
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
-            <div class="px-4 py-5 sm:px-6 bg-gray-50">
-                <h3 class="text-lg font-medium leading-6 text-gray-900">Dokumen LHP</h3>
-                <p class="mt-1 max-w-2xl text-sm text-gray-500">Unggah dokumen-dokumen terkait LHP</p>
-            </div>
-            <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
-                <dl class="sm:divide-y sm:divide-gray-200">
-                    <!-- File Surat Tugas -->
-                    <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt class="text-sm font-medium text-gray-500">File Surat Tugas</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            @if($lhp->file_surat_tugas)
-                                <div class="flex items-center">
-                                    <a href="{{ Storage::url($lhp->file_surat_tugas) }}" target="_blank" class="text-blue-600 hover:text-blue-800">
-                                        <i class="fas fa-file-pdf mr-2"></i>Lihat File
-                                    </a>
-                                    <button type="button" wire:click="deleteFile('file_surat_tugas')" class="ml-4 text-red-600 hover:text-red-800">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            @else
-                                <div class="space-y-2">
-                                    <input type="file" wire:model="file_surat_tugas" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                    @error('file_surat_tugas') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                    
-                                    <div class="upload-progress hidden space-y-1 mt-2" 
-                                         x-data="{ 
-                                            progress: 0, 
-                                            speed: 0, 
-                                            timeRemaining: 'Menghitung...', 
-                                            uploaded: 0, 
-                                            total: 0,
-                                            formatFileSize(bytes) {
-                                                if (!bytes || bytes === 0) return '0 Bytes';
-                                                const k = 1024;
-                                                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                                                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-                                            }
-                                         }" 
-                                         x-init="
-                                            $watch('progress', value => {
-                                                const progressBar = $el.querySelector('.progress-bar');
-                                                if (progressBar) {
-                                                    progressBar.style.width = value + '%';
-                                                    progressBar.classList.toggle('bg-blue-600', value < 100);
-                                                    progressBar.classList.toggle('bg-green-500', value === 100);
-                                                }
-                                            });
-                                            
-                                            // Listen for progress updates
-                                            window.addEventListener('upload-progress-updated', (e) => {
-                                                if (e.detail.name === 'file_surat_tugas') {
-                                                    progress = e.detail.progress;
-                                                    const fileInput = $el.closest('dd').querySelector('input[type=file]');
-                                                    if (fileInput && fileInput.files[0]) {
-                                                        uploaded = fileInput.files[0].size * (progress / 100);
-                                                        total = fileInput.files[0].size;
-                                                    }
-                                                }
-                                            });
-                                         ">
-                                        <div class="flex justify-between text-xs text-gray-600">
-                                            <span class="font-medium">Mengunggah...</span>
-                                            <span x-text="timeRemaining"></span>
-                                        </div>
-                                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                            <div class="bg-blue-600 h-2 rounded-full progress-bar transition-all duration-300 ease-in-out" 
-                                                 :class="{ 'animate-pulse': progress < 100 }">
-                                            </div>
-                                        </div>
-                                        <div class="flex justify-between text-xs text-gray-500">
-                                            <span x-text="formatFileSize(uploaded) + ' / ' + formatFileSize(total)"></span>
-                                            <span x-text="(progress || 0).toFixed(1) + '%'"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                        </dd>
-                    </div>
-                    
-                    <!-- File LHP -->
-                    <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt class="text-sm font-medium text-gray-500">File LHP</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            @if($lhp->file_lhp)
-                                <div class="flex items-center">
-                                    <a href="{{ Storage::url($lhp->file_lhp) }}" target="_blank" class="text-blue-600 hover:text-blue-800">
-                                        <i class="fas fa-file-pdf mr-2"></i>Lihat File
-                                    </a>
-                                    <button type="button" wire:click="deleteFile('file_lhp')" class="ml-4 text-red-600 hover:text-red-800">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            @else
-                                <div class="space-y-2">
-                                    <input type="file" wire:model="file_lhp" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                    @error('file_lhp') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                    
-                                    <div class="upload-progress hidden space-y-1 mt-2" 
-                                         x-data="{ 
-                                            progress: 0, 
-                                            speed: 0, 
-                                            timeRemaining: 'Menghitung...', 
-                                            uploaded: 0, 
-                                            total: 0,
-                                            formatFileSize(bytes) {
-                                                if (!bytes || bytes === 0) return '0 Bytes';
-                                                const k = 1024;
-                                                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                                                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-                                            }
-                                         }" 
-                                         x-init="
-                                            $watch('progress', value => {
-                                                const progressBar = $el.querySelector('.progress-bar');
-                                                if (progressBar) {
-                                                    progressBar.style.width = value + '%';
-                                                    progressBar.classList.toggle('bg-blue-600', value < 100);
-                                                    progressBar.classList.toggle('bg-green-500', value === 100);
-                                                }
-                                            });
-                                            
-                                            // Listen for progress updates
-                                            window.addEventListener('upload-progress-updated', (e) => {
-                                                if (e.detail.name === 'file_lhp') {
-                                                    progress = e.detail.progress;
-                                                    const fileInput = $el.closest('dd').querySelector('input[type=file]');
-                                                    if (fileInput && fileInput.files[0]) {
-                                                        uploaded = fileInput.files[0].size * (progress / 100);
-                                                        total = fileInput.files[0].size;
-                                                    }
-                                                }
-                                            });
-                                         ">
-                                        <div class="flex justify-between text-xs text-gray-600">
-                                            <span class="font-medium">Mengunggah...</span>
-                                            <span x-text="timeRemaining"></span>
-                                        </div>
-                                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                            <div class="bg-blue-600 h-2 rounded-full progress-bar transition-all duration-300 ease-in-out" 
-                                                 :class="{ 'animate-pulse': progress < 100 }">
-                                            </div>
-                                        </div>
-                                        <div class="flex justify-between text-xs text-gray-500">
-                                            <span x-text="formatFileSize(uploaded) + ' / ' + formatFileSize(total)"></span>
-                                            <span x-text="(progress || 0).toFixed(1) + '%'"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                        </dd>
-                    </div>
-                    
-                    <!-- File Kertas Kerja -->
-                    <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt class="text-sm font-medium text-gray-500">File Kertas Kerja</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            @if($lhp->file_kertas_kerja)
-                                <div class="flex items-center">
-                                    <a href="{{ Storage::url($lhp->file_kertas_kerja) }}" target="_blank" class="text-blue-600 hover:text-blue-800">
-                                        <i class="fas fa-file-pdf mr-2"></i>Lihat File
-                                    </a>
-                                    <button type="button" wire:click="deleteFile('file_kertas_kerja')" class="ml-4 text-red-600 hover:text-red-800">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            @else
-                                <div class="space-y-2">
-                                    <input type="file" wire:model="file_kertas_kerja" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                    @error('file_kertas_kerja') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                    
-                                    <div class="upload-progress hidden space-y-1 mt-2" 
-                                         x-data="{ 
-                                            progress: 0, 
-                                            speed: 0, 
-                                            timeRemaining: 'Menghitung...', 
-                                            uploaded: 0, 
-                                            total: 0,
-                                            formatFileSize(bytes) {
-                                                if (!bytes || bytes === 0) return '0 Bytes';
-                                                const k = 1024;
-                                                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                                                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-                                            }
-                                         }" 
-                                         x-init="
-                                            $watch('progress', value => {
-                                                const progressBar = $el.querySelector('.progress-bar');
-                                                if (progressBar) {
-                                                    progressBar.style.width = value + '%';
-                                                    progressBar.classList.toggle('bg-blue-600', value < 100);
-                                                    progressBar.classList.toggle('bg-green-500', value === 100);
-                                                }
-                                            });
-                                            
-                                            // Listen for progress updates
-                                            window.addEventListener('upload-progress-updated', (e) => {
-                                                if (e.detail.name === 'file_kertas_kerja') {
-                                                    progress = e.detail.progress;
-                                                    const fileInput = $el.closest('dd').querySelector('input[type=file]');
-                                                    if (fileInput && fileInput.files[0]) {
-                                                        uploaded = fileInput.files[0].size * (progress / 100);
-                                                        total = fileInput.files[0].size;
-                                                    }
-                                                }
-                                            });
-                                         ">
-                                        <div class="flex justify-between text-xs text-gray-600">
-                                            <span class="font-medium">Mengunggah...</span>
-                                            <span x-text="timeRemaining"></span>
-                                        </div>
-                                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                            <div class="bg-blue-600 h-2 rounded-full progress-bar transition-all duration-300 ease-in-out" 
-                                                 :class="{ 'animate-pulse': progress < 100 }">
-                                            </div>
-                                        </div>
-                                        <div class="flex justify-between text-xs text-gray-500">
-                                            <span x-text="formatFileSize(uploaded) + ' / ' + formatFileSize(total)"></span>
-                                            <span x-text="(progress || 0).toFixed(1) + '%'"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                        </dd>
-                    </div>
-                    
-                    <!-- File Review Sheet -->
-                    <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt class="text-sm font-medium text-gray-500">File Review Sheet</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            @if($lhp->file_review_sheet)
-                                <div class="flex items-center">
-                                    <a href="{{ Storage::url($lhp->file_review_sheet) }}" target="_blank" class="text-blue-600 hover:text-blue-800">
-                                        <i class="fas fa-file-pdf mr-2"></i>Lihat File
-                                    </a>
-                                    <button type="button" wire:click="deleteFile('file_review_sheet')" class="ml-4 text-red-600 hover:text-red-800">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            @else
-                                <div class="space-y-2">
-                                    <input type="file" wire:model="file_review_sheet" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                    @error('file_review_sheet') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                    
-                                    <div class="upload-progress hidden space-y-1 mt-2" 
-                                         x-data="{ 
-                                            progress: 0, 
-                                            speed: 0, 
-                                            timeRemaining: 'Menghitung...', 
-                                            uploaded: 0, 
-                                            total: 0,
-                                            formatFileSize(bytes) {
-                                                if (!bytes || bytes === 0) return '0 Bytes';
-                                                const k = 1024;
-                                                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                                                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-                                            }
-                                         }" 
-                                         x-init="
-                                            $watch('progress', value => {
-                                                const progressBar = $el.querySelector('.progress-bar');
-                                                if (progressBar) {
-                                                    progressBar.style.width = value + '%';
-                                                    progressBar.classList.toggle('bg-blue-600', value < 100);
-                                                    progressBar.classList.toggle('bg-green-500', value === 100);
-                                                }
-                                            });
-                                            
-                                            // Listen for progress updates
-                                            window.addEventListener('upload-progress-updated', (e) => {
-                                                if (e.detail.name === 'file_review_sheet') {
-                                                    progress = e.detail.progress;
-                                                    const fileInput = $el.closest('dd').querySelector('input[type=file]');
-                                                    if (fileInput && fileInput.files[0]) {
-                                                        uploaded = fileInput.files[0].size * (progress / 100);
-                                                        total = fileInput.files[0].size;
-                                                    }
-                                                }
-                                            });
-                                         ">
-                                        <div class="flex justify-between text-xs text-gray-600">
-                                            <span class="font-medium">Mengunggah...</span>
-                                            <span x-text="timeRemaining"></span>
-                                        </div>
-                                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                            <div class="bg-blue-600 h-2 rounded-full progress-bar transition-all duration-300 ease-in-out" 
-                                                 :class="{ 'animate-pulse': progress < 100 }">
-                                            </div>
-                                        </div>
-                                        <div class="flex justify-between text-xs text-gray-500">
-                                            <span x-text="formatFileSize(uploaded) + ' / ' + formatFileSize(total)"></span>
-                                            <span x-text="(progress || 0).toFixed(1) + '%'"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                        </dd>
-                    </div>
-                    
-                    <!-- File Nota Dinas -->
-                    <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt class="text-sm font-medium text-gray-500">File Nota Dinas</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            @if($lhp->file_nota_dinas)
-                                <div class="flex items-center">
-                                    <a href="{{ Storage::url($lhp->file_nota_dinas) }}" target="_blank" class="text-blue-600 hover:text-blue-800">
-                                        <i class="fas fa-file-pdf mr-2"></i>Lihat File
-                                    </a>
-                                    <button type="button" wire:click="deleteFile('file_nota_dinas')" class="ml-4 text-red-600 hover:text-red-800">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            @else
-                                <div class="space-y-2">
-                                    <input type="file" wire:model="file_nota_dinas" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                    @error('file_nota_dinas') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                    
-                                    <div class="upload-progress hidden space-y-1 mt-2" 
-                                         x-data="{ 
-                                            progress: 0, 
-                                            speed: 0, 
-                                            timeRemaining: 'Menghitung...', 
-                                            uploaded: 0, 
-                                            total: 0,
-                                            formatFileSize(bytes) {
-                                                if (!bytes || bytes === 0) return '0 Bytes';
-                                                const k = 1024;
-                                                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                                                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-                                            }
-                                         }" 
-                                         x-init="
-                                            $watch('progress', value => {
-                                                const progressBar = $el.querySelector('.progress-bar');
-                                                if (progressBar) {
-                                                    progressBar.style.width = value + '%';
-                                                    progressBar.classList.toggle('bg-blue-600', value < 100);
-                                                    progressBar.classList.toggle('bg-green-500', value === 100);
-                                                }
-                                            });
-                                            
-                                            // Listen for progress updates
-                                            window.addEventListener('upload-progress-updated', (e) => {
-                                                if (e.detail.name === 'file_nota_dinas') {
-                                                    progress = e.detail.progress;
-                                                    const fileInput = $el.closest('dd').querySelector('input[type=file]');
-                                                    if (fileInput && fileInput.files[0]) {
-                                                        uploaded = fileInput.files[0].size * (progress / 100);
-                                                        total = fileInput.files[0].size;
-                                                    }
-                                                }
-                                            });
-                                         ">
-                                        <div class="flex justify-between text-xs text-gray-600">
-                                            <span class="font-medium">Mengunggah...</span>
-                                            <span x-text="timeRemaining"></span>
-                                        </div>
-                                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                            <div class="bg-blue-600 h-2 rounded-full progress-bar transition-all duration-300 ease-in-out" 
-                                                 :class="{ 'animate-pulse': progress < 100 }">
-                                            </div>
-                                        </div>
-                                        <div class="flex justify-between text-xs text-gray-500">
-                                            <span x-text="formatFileSize(uploaded) + ' / ' + formatFileSize(total)"></span>
-                                            <span x-text="(progress || 0).toFixed(1) + '%'"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                        </dd>
-                    </div>
-                </dl>
+    <!-- Tab Navigation -->
+    <div class="bg-white/60 rounded-xl p-2 mb-8 shadow-sm border">
+        <div class="flex flex-wrap gap-2">
+            <button @click="activeTab = 'dokumen'" :class="activeTab === 'dokumen' ? 'text-white bg-[--color-accent] shadow-md' : 'text-[--color-dark] hover:bg-white/80'" class="flex-1 px-6 py-3 rounded-lg font-semibold transition-all"><i class="fas fa-file-alt mr-2"></i> Dokumen</button>
+            <button @click="activeTab = 'temuan'" :class="activeTab === 'temuan' ? 'text-white bg-[--color-accent] shadow-md' : 'text-[--color-dark] hover:bg-white/80'" class="flex-1 px-6 py-3 rounded-lg font-semibold transition-all"><i class="fas fa-clipboard-list mr-2"></i> Temuan</button>
+            <button @click="activeTab = 'tindak-lanjut'" :class="activeTab === 'tindak-lanjut' ? 'text-white bg-[--color-accent] shadow-md' : 'text-[--color-dark] hover:bg-white/80'" class="flex-1 px-6 py-3 rounded-lg font-semibold transition-all"><i class="fas fa-tasks mr-2"></i> Tindak Lanjut <span class="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">{{ $lhp->tindakLanjuts->count() }}</span></button>
+        </div>
+    </div>
+
+    <!-- Tab Content Area -->
+    <div class="card min-h-[400px]">
+        <!-- Dokumen Tab -->
+        <div x-show="activeTab === 'dokumen'" x-transition.opacity.duration.500ms>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 @foreach (['file_surat_tugas' => 'Surat Tugas', 'file_lhp' => 'File LHP', 'file_kertas_kerja' => 'Kertas Kerja', 'file_review_sheet' => 'Review Sheet', 'file_nota_dinas' => 'Nota Dinas'] as $field => $title)
+                <div id="uploader-{{ $field }}" class="bg-white/50 border rounded-xl p-6 hover:shadow-lg transition-shadow duration-300 uploader-container" data-field-name="{{ $field }}">
+                    <h3 class="font-semibold text-[--color-dark] mb-4">{{ $title }}</h3>
+                    @if($lhp->$field)
+                        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                            <a href="{{ Storage::url($lhp->$field) }}" target="_blank" class="flex items-center truncate text-sm font-medium text-green-800"><i class="fas fa-check-circle text-green-500 mr-3"></i><span class="truncate">{{ basename($lhp->$field) }}</span></a>
+                            <button type="button" wire:click="deleteFile('{{ $field }}')" wire:confirm="Anda yakin?" class="ml-4 text-gray-500 hover:text-red-600 transition"><i class="fas fa-trash"></i></button>
+                        </div>
+                    @else
+                        <div class="upload-area border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-[--color-accent] hover:bg-[--color-accent]/5 transition">
+                            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i><p class="text-gray-600 text-sm">Klik untuk unggah</p>
+                        </div>
+                        <div class="progress-container w-full bg-gray-200 rounded-full mt-3 hidden"><div class="progress-bar bg-[--color-primary] text-xs text-white text-center p-0.5 leading-none rounded-full" style="width: 0%">0%</div></div>
+                    @endif
+                </div>
+                @endforeach
             </div>
         </div>
 
-        <!-- Rest of the form remains the same... -->
-        <!-- Group 2: Findings -->
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
-            <div class="px-4 py-5 sm:px-6 bg-gray-50">
-                <h3 class="text-lg font-medium leading-6 text-gray-900">Temuan dan Rekomendasi</h3>
-                <p class="mt-1 max-w-2xl text-sm text-gray-500">Masukkan temuan dan rekomendasi dari pemeriksaan</p>
-            </div>
-            <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
-                <dl class="sm:divide-y sm:divide-gray-200">
-                    <!-- Temuan -->
-                    <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt class="text-sm font-medium text-gray-500">Temuan</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            <textarea wire:model="temuan" rows="3" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md"></textarea>
-                            @error('temuan') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </dd>
-                    </div>
-                    
-                    <!-- Rincian Rekomendasi -->
-                    <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt class="text-sm font-medium text-gray-500">Rincian Rekomendasi</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            <textarea wire:model="rincian_rekomendasi" rows="3" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md"></textarea>
-                            @error('rincian_rekomendasi') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </dd>
-                    </div>
-                    
-                    <!-- Besaran Temuan -->
-                    <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt class="text-sm font-medium text-gray-500">Besaran Temuan</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            <input type="text" wire:model="besaran_temuan" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                            @error('besaran_temuan') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </dd>
-                    </div>
-                    
-                    <!-- Tindak Lanjut -->
-                    <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt class="text-sm font-medium text-gray-500">Tindak Lanjut</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            <textarea wire:model="tindak_lanjut" rows="3" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md"></textarea>
-                            @error('tindak_lanjut') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </dd>
-                    </div>
-                </dl>
-            </div>
+        <!-- Temuan Tab -->
+        <div x-show="activeTab === 'temuan'" x-transition.opacity.duration.500ms>
+            <form wire:submit.prevent="saveTemuan" class="space-y-6">
+                <h3 class="text-2xl font-bold text-[--color-dark]">Detail Temuan & Rekomendasi</h3>
+                <div>
+                    <label for="temuan" class="block text-sm font-medium text-[--color-dark] mb-1">Temuan</label>
+                    <textarea id="temuan" wire:model="temuan" rows="4" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[--color-accent] focus:border-[--color-accent]"></textarea>
+                </div>
+                <div>
+                    <label for="rekomendasi" class="block text-sm font-medium text-[--color-dark] mb-1">Rincian Rekomendasi</label>
+                    <textarea id="rekomendasi" wire:model="rincian_rekomendasi" rows="4" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[--color-accent] focus:border-[--color-accent]"></textarea>
+                </div>
+                <div>
+                    <label for="besaran" class="block text-sm font-medium text-[--color-dark] mb-1">Besaran Temuan (Rp)</label>
+                    <input type="number" id="besaran" wire:model="besaran_temuan" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[--color-accent] focus:border-[--color-accent]" placeholder="0">
+                </div>
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="w-full md:w-auto px-6 py-3 bg-[#1B5E20] text-white rounded-xl font-semibold transition-all hover:bg-[#388E3C] hover:shadow-lg hover:scale-105">Simpan Temuan</button>
+                </div>
+            </form>
         </div>
 
-        <div class="flex justify-end">
-            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                Simpan Perubahan
-            </button>
+        <!-- Tindak Lanjut Tab -->
+        <div x-show="activeTab === 'tindak-lanjut'" x-transition.opacity.duration.500ms>
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-[--color-dark]">Daftar Tindak Lanjut</h3>
+                <button wire:click="openTindakLanjutModal" class="w-full md:w-auto px-6 py-3 bg-[#1B5E20] text-white rounded-xl font-semibold transition-all hover:bg-[#388E3C] hover:shadow-lg hover:scale-105"><i class="fas fa-plus mr-2"></i> Tambah</button>
+            </div>
+            <div class="space-y-4">
+                @forelse($lhp->tindakLanjuts as $tl)
+                    <div class="bg-white/80 rounded-lg p-4 flex items-start gap-4 hover:shadow-md transition-shadow">
+                       <i class="fas fa-file-alt text-2xl text-[--color-primary] mt-1"></i>
+                       <div class="flex-grow">
+                           <p class="font-semibold text-[--color-dark]">{{ $tl->file_name }}</p>
+                           <p class="text-sm text-gray-600">{{ $tl->description }}</p>
+                           <p class="text-xs text-gray-500 mt-1">{{ $tl->created_at->translatedFormat('d F Y, H:i') }}</p>
+                       </div>
+                       <div class="flex gap-4 text-gray-500 text-lg">
+                           <a href="{{ Storage::url($tl->file_path) }}" target="_blank" class="hover:text-[--color-primary] transition" title="Unduh"><i class="fas fa-download"></i></a>
+                           <button wire:click="openTindakLanjutModal({{ $tl->id }})" class="hover:text-[--color-secondary] transition" title="Edit"><i class="fas fa-edit"></i></button>
+                           <button wire:click="deleteTindakLanjut({{ $tl->id }})" wire:confirm="Anda yakin?" class="hover:text-[--color-accent] transition" title="Hapus"><i class="fas fa-trash"></i></button>
+                       </div>
+                    </div>
+                @empty
+                    <div class="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg"><i class="fas fa-folder-open fa-3x text-gray-400"></i><p class="mt-4 text-gray-600">Belum ada tindak lanjut.</p></div>
+                @endforelse
+            </div>
         </div>
-    </form>
+    </div>
+    
+    <!-- Tindak Lanjut Modal -->
+    <div x-show="$wire.showTindakLanjutModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div @click="$wire.closeTindakLanjutModal()" class="fixed inset-0 bg-black/60 backdrop-blur-sm" x-show="$wire.showTindakLanjutModal" x-transition.opacity></div>
+        <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl p-8" x-show="$wire.showTindakLanjutModal" x-transition>
+            <h3 class="text-2xl font-bold text-[--color-dark] mb-6">{{ $tindakLanjutId ? 'Edit' : 'Tambah' }} Tindak Lanjut</h3>
+            <form wire:submit.prevent="saveTindakLanjut" class="space-y-4">
+                <div>
+                    <label class="font-medium text-gray-700">File Tindak Lanjut</label>
+                    <input type="file" wire:model="tindakLanjutFile" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    <div wire:loading wire:target="tindakLanjutFile" class="text-sm text-[--color-accent] mt-1">Mengunggah...</div>
+                    @if($editingTindakLanjut?->file_name && !$tindakLanjutFile) <p class="text-sm text-gray-500 mt-1">File saat ini: {{ $editingTindakLanjut->file_name }}</p> @endif
+                    @error('tindakLanjutFile') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                </div>
+                 <div>
+                    <label class="font-medium text-gray-700">Keterangan</label>
+                    <textarea wire:model="tindakLanjutDescription" rows="3" class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:ring-[--color-accent] focus:border-[--color-accent]"></textarea>
+                 </div>
+                 <div class="flex justify-end gap-4 pt-4">
+                     <button type="button" @click="$wire.closeTindakLanjutModal()" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition">Batal</button>
+                     <button type="submit" class="w-full md:w-auto px-6 py-3 bg-[#1B5E20] text-white rounded-xl font-semibold transition-all hover:bg-[#388E3C] hover:shadow-lg hover:scale-105">Simpan</button>
+                 </div>
+            </form>
+        </div>
+    </div>
 </div>
 
-@push('styles')
-<style>
-    .progress-bar {
-        transition: width 0.3s ease-in-out;
-    }
-    .animate-pulse-slow {
-        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-    }
-    /* SweetAlert2 Customizations */
-    .swal2-popup {
-        font-size: 0.9rem !important;
-    }
-    .swal2-title {
-        font-size: 1.2rem !important;
-    }
-</style>
-@endpush
-
 @push('scripts')
-<!-- SweetAlert2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    document.addEventListener('livewire:initialized', () => {
-        // Get the LHP ID from the Livewire component
-        const lhpId = @json($lhp->id);
-        
-        // Handle file input changes - escape the colon in wire:model
-        document.querySelectorAll('input[type="file"][wire\\:model]').forEach(input => {
-            input.addEventListener('change', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const fieldName = this.getAttribute('wire:model');
-                const file = this.files[0];
-                const fileInput = this; // Store reference to the input
-                
-                if (!file) return;
-                
-                // Validate file type
-                const validTypes = ['application/pdf'];
-                if (!validTypes.includes(file.type)) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Format File Tidak Valid',
-                        text: 'Hanya file PDF yang diizinkan.',
-                        confirmButtonText: 'Mengerti'
-                    });
-                    this.value = ''; // Clear the file input
-                    return;
-                }
-                
-                // Validate file size (200MB)
-                const maxSize = 200 * 1024 * 1024; // 200MB in bytes
-                if (file.size > maxSize) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Ukuran File Terlalu Besar',
-                        text: 'Ukuran file melebihi batas maksimal 200MB.',
-                        confirmButtonText: 'Mengerti'
-                    });
-                    this.value = ''; // Clear the file input
-                    return;
-                }
-                
-                // Create a fresh FormData instance
-                const formData = new FormData();
-                
-                // Append the file with the correct field name
-                formData.append('file', file);
-                formData.append('field_name', fieldName);
-                formData.append('lhp_id', lhpId); // Add the LHP ID
-                
-                // Log file info for debugging
-                console.log('File to upload:', {
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    lastModified: file.lastModified,
-                    lhpId: lhpId
-                });
-                
-                // Show progress container
-                const progressContainer = this.closest('dd').querySelector('.upload-progress');
-                if (progressContainer) {
-                    progressContainer.classList.remove('hidden');
-                    // Clear any previous errors
-                    const errorElement = progressContainer.querySelector('.text-red-500');
-                    if (errorElement) errorElement.textContent = '';
-                }
-                
-                // Create a new XMLHttpRequest
-                const xhr = new XMLHttpRequest();
-                
-                // Configure the request
-                const uploadUrl = '{{ route('livewire.upload-file') }}';
-                console.log('Upload URL:', uploadUrl); // Debug log
-                xhr.open('POST', uploadUrl, true);
-                
-                // Set CSRF token
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
-                xhr.setRequestHeader('Accept', 'application/json');
-                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                
-                // Handle upload progress
-                xhr.upload.onprogress = (e) => {
-                    if (e.lengthComputable) {
-                        const percentComplete = Math.round((e.loaded / e.total) * 100);
-                        console.log(`Upload progress: ${percentComplete}%`);
-                        
-                        // Dispatch progress event for Alpine.js
-                        window.dispatchEvent(new CustomEvent('upload-progress-updated', {
-                            detail: {
-                                name: fieldName,
-                                progress: percentComplete
-                            }
-                        }));
-                        
-                        // Update Livewire component with progress
-                        @this.updateUploadProgress(
-                            fieldName, 
-                            percentComplete,
-                            e.loaded,
-                            e.total
-                        );
+    document.addEventListener('DOMContentLoaded', function () {
+        const lhpId = @json($lhpId);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const uploadUrl = '{{ route("livewire.upload-file") }}';
+
+        document.querySelectorAll('.uploader-container').forEach(container => {
+            const fieldName = container.dataset.fieldName;
+            const uploadArea = container.querySelector('.upload-area');
+            if (!uploadArea) return;
+
+            uploadArea.addEventListener('click', () => {
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.pdf';
+                fileInput.onchange = (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        uploadFile(file, container, fieldName);
                     }
                 };
-                
-                // Handle successful upload
-                xhr.onload = () => {
-                    console.log('Upload complete. Status:', xhr.status);
-                    
-                    if (xhr.status === 200) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.success) {
-                                // Hide progress container after successful upload
-                                if (progressContainer) {
-                                    setTimeout(() => {
-                                        progressContainer.classList.add('hidden');
-                                    }, 1000);
-                                }
-                                
-                                // Reset the input to allow re-uploading the same file
-                                fileInput.value = '';
-                                
-                                // Refresh the Livewire component to show the uploaded file
-                                @this.refresh();
-                                
-                                // Show success message with SweetAlert2
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Berhasil!',
-                                    text: 'File berhasil diunggah',
-                                    toast: true,
-                                    position: 'top-end',
-                                    showConfirmButton: false,
-                                    timer: 3000,
-                                    timerProgressBar: true,
-                                    didOpen: (toast) => {
-                                        toast.addEventListener('mouseenter', Swal.stopTimer);
-                                        toast.addEventListener('mouseleave', Swal.resumeTimer);
-                                    }
-                                });
-                            } else {
-                                showUploadError(progressContainer, response.message || 'Upload gagal');
-                            }
-                        } catch (e) {
-                            console.error('Error parsing upload response:', e);
-                            showUploadError(progressContainer, 'Terjadi kesalahan saat memproses respons');
-                        }
-                    } else {
-                        let errorMessage = `Server error: ${xhr.status} ${xhr.statusText}`;
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            errorMessage = response.message || errorMessage;
-                        } catch (e) {}
-                        showUploadError(progressContainer, errorMessage);
-                    }
-                };
-                
-                // Handle upload errors
-                xhr.onerror = () => {
-                    console.error('Upload error occurred');
-                    showUploadError(progressContainer, 'Kesalahan koneksi saat mengunggah file');
-                };
-                
-                // Handle timeout
-                xhr.ontimeout = () => {
-                    console.error('Upload timed out');
-                    showUploadError(progressContainer, 'Waktu unggah habis. Silakan coba lagi.');
-                };
-                
-                // Set timeout (5 minutes)
-                xhr.timeout = 5 * 60 * 1000;
-                
-                // Function to show upload errors
-                function showUploadError(container, message) {
-                    console.error('Upload error:', message);
-                    // Show SweetAlert2 error
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Upload Gagal',
-                        text: message,
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 5000,
-                        timerProgressBar: true,
-                        didOpen: (toast) => {
-                            toast.addEventListener('mouseenter', Swal.stopTimer);
-                            toast.addEventListener('mouseleave', Swal.resumeTimer);
-                        }
-                    });
-                }
-                
-                // Show loading notification with SweetAlert2
-                let timerInterval;
-                Swal.fire({
-                    title: 'Mengunggah File',
-                    html: `Sedang mengunggah <b>${file.name}</b>...`, 
-                    timerProgressBar: true,
-                    didOpen: () => {
-                        Swal.showLoading();
-                        const b = Swal.getHtmlContainer().querySelector('b');
-                        timerInterval = setInterval(() => {
-                            const progress = document.querySelector(`#progress-${fieldName} .progress-bar`);
-                            if (progress) {
-                                const percent = progress.style.width || '0%';
-                                b.textContent = `Mengunggah ${percent}`;
-                            }
-                        }, 100);
-                    },
-                    willClose: () => {
-                        clearInterval(timerInterval);
-                    }
-                });
-                
-                // Start the upload
-                xhr.send(formData);
+                fileInput.click();
             });
         });
+
+        function uploadFile(file, container, fieldName) {
+            const progressContainer = container.querySelector('.progress-container');
+            const progressBar = container.querySelector('.progress-bar');
+            
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('lhp_id', lhpId);
+            formData.append('field_name', fieldName);
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', uploadUrl, true);
+            xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
+            xhr.setRequestHeader('Accept', 'application/json');
+
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const percentComplete = Math.round((event.loaded / event.total) * 100);
+                    progressBar.style.width = percentComplete + '%';
+                    progressBar.textContent = percentComplete + '%';
+                }
+            };
+
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    Livewire.dispatch('upload-completed');
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'File berhasil diunggah!', showConfirmButton: false, timer: 3000 });
+                } else {
+                    let errorMsg = `Error: ${xhr.statusText}`;
+                    try { const response = JSON.parse(xhr.responseText); errorMsg = response.message || response.error || errorMsg; } catch (e) {}
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Upload Gagal', text: errorMsg, showConfirmButton: false, timer: 5000 });
+                }
+            };
+
+            xhr.onerror = () => {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Upload Gagal', text: 'Terjadi kesalahan jaringan.', showConfirmButton: false, timer: 5000 });
+            };
+            xhr.send(formData);
+        }
     });
 </script>
 @endpush

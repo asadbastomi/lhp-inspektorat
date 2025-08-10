@@ -1,118 +1,146 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+<html lang="id">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ $title ?? 'Sistem Monitoring Laporan' }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <title>{{ config('app.name', 'LHP Inspektorat') }}</title>
-    
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Styles -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
-    <!-- Scripts -->
     @livewireStyles
     @stack('styles')
-    
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body class="font-sans antialiased min-h-screen bg-gradient-to-br from-blue-50 to-pink-50">
-    <div class="flex h-screen overflow-hidden">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <x-layouts.app.sidebar :title="$title ?? null" />
-        </div>
-        
-        <!-- Main Content -->
-        <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Header -->
-            <header class="bg-white/80 backdrop-blur-sm border-b border-white/50">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                    <button type="button" class="lg:hidden text-gray-500 hover:text-gray-600 focus:outline-none" onclick="document.querySelector('body').classList.toggle('mobile-menu-open')">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                        </svg>
-                    </button>
-                    <h1 class="text-2xl font-bold text-gray-800 ml-4 lg:ml-0">{{ $header ?? '' }}</h1>
-                    <div class="flex items-center space-x-4">
-                        @auth
-                            <div class="relative">
-                                <button class="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 focus:outline-none" id="user-menu">
-                                    <span class="sr-only">Open user menu</span>
-                                    <div class="h-8 w-8 rounded-full bg-gradient-to-r from-blue-400 to-pink-400 flex items-center justify-center text-white text-sm font-medium">
-                                        {{ substr(auth()->user()->name, 0, 2) }}
-                                    </div>
-                                </button>
-                                
-                                <!-- Dropdown menu -->
-                                <div class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50" role="menu" id="user-dropdown">
-                                    <div class="py-1" role="none">
-                                        <a href="{{ route('settings.profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
-                                            {{ __('Profile') }}
-                                        </a>
-                                        <form method="POST" action="{{ route('logout') }}" class="w-full">
-                                            @csrf
-                                            <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
-                                                {{ __('Log Out') }}
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        @else
-                            <a href="{{ route('login') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                {{ __('Log in') }}
-                            </a>
-                        @endauth
-                    </div>
-                </div>
-            </header>
+
+    <style>
+        /* Your Full app.css Configuration */
+        :root {
+            --color-primary: #a8d8ea; /* Light Blue */
+            --color-secondary: #f8b195; /* Peach */
+            --color-accent: #f67280;   /* Coral Pink */
+            --color-light: #f8f9fa;
+            --color-dark: #2c3e50;     /* Dark Slate Blue */
+        }
+
+        @layer base {
+            * {
+                transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+                transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                transition-duration: 200ms;
+            }
             
-            <!-- Page Content -->
-            <main class="flex-1 overflow-y-auto p-6">
-                <!-- Animated Background Elements -->
-                <div class="fixed inset-0 -z-10 overflow-hidden">
-                    <div class="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-                    <div class="absolute top-1/3 right-1/4 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-                    <div class="absolute bottom-1/4 left-1/2 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+            body {
+                background: linear-gradient(to bottom right, #eff6ff 0%, #fdf2f8 100%);
+                min-height: 100vh;
+                font-family: 'Inter', sans-serif;
+                color: var(--color-dark);
+            }
+            
+            ::-webkit-scrollbar { width: 0.5rem; }
+            ::-webkit-scrollbar-track { background-color: transparent; }
+            ::-webkit-scrollbar-thumb { background-color: #bfdbfe; border-radius: 9999px; }
+            ::-webkit-scrollbar-thumb:hover { background-color: #93c5fd; }
+        }
+
+        @layer components {
+            .btn {
+                padding: 0.75rem 1.5rem;
+                font-weight: 600;
+                transform: translateZ(0);
+                border-radius: 0.75rem;
+                border: none;
+                cursor: pointer;
+            }
+            
+            .btn:hover { transform: scale(1.03) translateZ(0); }
+            .btn:active { transform: scale(0.97) translateZ(0); }
+            
+            .btn-primary {
+                background-color: var(--color-accent);
+                color: white;
+                box-shadow: 0 4px 14px rgba(246, 114, 128, 0.3);
+            }
+            .btn-primary:hover {
+                background-color: #f45b6d; /* Darker accent */
+                box-shadow: 0 6px 20px rgba(246, 114, 128, 0.4);
+            }
+            
+            .card {
+                background-color: rgba(255, 255, 255, 0.85);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border-radius: 1.25rem;
+                padding: 2rem;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.6);
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <header class="sticky top-0 z-40">
+        <nav class="container mx-auto my-4 px-6 py-3 card flex justify-between items-center">
+            <a href="{{ route('dashboard') }}" class="text-xl font-bold text-[--color-dark]">
+                <i class="fas fa-rocket text-[--color-accent]"></i> SIMONILA
+            </a>
+            <div class="hidden md:flex items-center gap-6 text-sm font-medium text-[--color-dark]">
+                <a href="{{ route('dashboard') }}" class="hover:text-[--color-accent] transition {{ request()->routeIs('dashboard') ? 'text-[--color-accent] font-semibold' : '' }}">Dashboard</a>
+                <a href="{{ route('lhps') }}" class="hover:text-[--color-accent] transition {{ request()->routeIs('lhps*') ? 'text-[--color-accent] font-semibold' : '' }}">LHP</a>
+                <a href="{{ route('irbans') }}" class="hover:text-[--color-accent] transition {{ request()->routeIs('irbans*') ? 'text-[--color-accent] font-semibold' : '' }}">Irban</a>
+                <a href="#" class="hover:text-[--color-accent] transition">Users</a>
+            </div>
+            <div class="relative" x-data="{ open: false }">
+                <button @click="open = !open" class="flex items-center gap-2 text-[--color-dark]">
+                    <span>{{ Auth::user()->name ?? 'Admin' }}</span>
+                    <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': open }"></i>
+                </button>
+                <div x-show="open" @click.away="open = false" x-cloak class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-1">
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</button>
+                    </form>
                 </div>
-                
-                <!-- Page Heading -->
-                @if (isset($header))
-                    <div class="mb-6">
-                        <h2 class="text-3xl font-bold text-gray-900">{{ $header }}</h2>
-                    </div>
-                @endif
-                
-                <!-- Flash Messages -->
-                @if (session('status'))
-                    <div class="mb-6 bg-green-100 border-l-4 border-green-500 text-green-700 p-4" role="alert">
-                        <p>{{ session('status') }}</p>
-                    </div>
-                @endif
-                
-                <!-- Main Content -->
-                <div class="space-y-6">
-                    {{ $slot }}
-                </div>
-            </main>
-        </div>
-    </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="relative z-10">
+        {{ $slot }}
+    </main>
     
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
     <!-- Global notification handler -->
     <script>
         // Handle Livewire flash messages
         document.addEventListener('livewire:initialized', () => {
+            
+            
             // Listen for Livewire flash messages
             Livewire.on('notify', (data) => {
-                const { type, title, message, timer = 3000 } = data;
+                
+                
+                // Handle both direct object and array-wrapped data
+                let notificationData = {};
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    // If data is an array, use the first element
+                    notificationData = data[0] || {};
+                } else if (typeof data === 'object' && data !== null) {
+                    // If data is an object, use it directly
+                    notificationData = data;
+                }
+                
+                
+                
+                // Extract values with defaults
+                const type = notificationData.type || 'info';
+                const title = notificationData.title || 'Notification';
+                const message = notificationData.message || '';
+                const timer = notificationData.timer || 3000;
+                
+                
                 
                 const Toast = Swal.mixin({
                     toast: true,
@@ -125,15 +153,25 @@
                         toast.addEventListener('mouseleave', Swal.resumeTimer);
                     }
                 });
+                
 
-                // For toast notifications, we'll combine title and message for better display
+                // For toast notifications, combine title and message for better display
                 const toastTitle = title;
                 const toastHtml = message ? `<div class="text-sm mt-1">${message}</div>` : '';
                 
-                Toast.fire({
+                
+                const toast = Toast.fire({
                     icon: type,
                     title: toastTitle,
                     html: toastHtml
+                });
+                
+                // Debug the toast instance
+                
+                toast.then((result) => {
+                    
+                }).catch((error) => {
+                    console.error('Toast error:', error);
                 });
             });
         });
@@ -193,27 +231,7 @@
             @endforeach
         @endif
     </script>
-    
-    @stack('modals')
     @livewireScripts
     @stack('scripts')
-    
-    <style>
-        @keyframes blob {
-            0% { transform: translate(0px, 0px) scale(1); }
-            33% { transform: translate(30px, -50px) scale(1.1); }
-            66% { transform: translate(-20px, 20px) scale(0.9); }
-            100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob {
-            animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-            animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-            animation-delay: 4s;
-        }
-    </style>
 </body>
 </html>

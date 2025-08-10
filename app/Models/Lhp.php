@@ -52,4 +52,12 @@ class Lhp extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Get the tindak lanjut records for the LHP.
+     */
+    public function tindakLanjuts()
+    {
+        return $this->hasMany(TindakLanjut::class);
+    }
 }

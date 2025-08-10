@@ -20,6 +20,7 @@ Route::middleware(['auth','verified'])->group(function () {
     Route::get('lhp', \App\Livewire\LhpManager::class)->name('lhps');
     Route::get('lhp/{id}', LhpDetail::class)->name('lhp.detail');
     Route::get('irban', \App\Livewire\IrbanManager::class)->name('irbans');
+    Route::get('tindak-lanjut', \App\Livewire\TindakLanjutManager::class)->name('tindak-lanjut');
     Route::redirect('settings', 'settings/profile');
 
     Route::get('settings/profile', Profile::class)->name('settings.profile');

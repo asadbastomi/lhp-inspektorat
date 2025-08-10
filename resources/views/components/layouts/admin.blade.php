@@ -56,6 +56,10 @@
                     <i class="fas fa-file-alt mr-3"></i>
                     LHP
                 </a>
+                <a href="{{ route('tindak-lanjut') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('tindak-lanjut') ? 'text-blue-600 bg-blue-100' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50' }}">
+                    <i class="fas fa-tasks mr-3"></i>
+                    Tindak Lanjut
+                </a>
                 <a href="#" class="flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                     <i class="fas fa-search mr-3"></i>
                     Temuan
