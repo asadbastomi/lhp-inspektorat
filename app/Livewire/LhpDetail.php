@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\Lhp;
+use App\Models\Pegawai;
+use App\Models\JabatanTim;
 use App\Models\TindakLanjut;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -16,19 +18,29 @@ class LhpDetail extends Component
 
     public Lhp $lhp;
     public $lhpId;
+
+    // Temuan Properties
     public $temuan;
     public $rincian_rekomendasi;
     public $besaran_temuan;
+
+    // Tindak Lanjut Properties
     public $showTindakLanjutModal = false;
     public $tindakLanjutId;
     public $tindakLanjutDescription;
     public TindakLanjut|null $editingTindakLanjut = null;
     public $tindakLanjutFile;
 
+    // NEW: Susunan Tim Properties
+    public $newTimPegawaiId = '';
+    public $newTimJabatanId = '';
+
     public function mount($id)
     {
         $this->lhpId = $id;
-        $this->lhp = Lhp::with(['user', 'tindakLanjuts'])->findOrFail($id);
+        // Eager load all necessary relationships
+        $this->lhp = Lhp::with(['user', 'tindakLanjuts', 'tim.jabatanTim'])->findOrFail($id);
+
         $this->temuan = $this->lhp->temuan;
         $this->rincian_rekomendasi = $this->lhp->rincian_rekomendasi;
         $this->besaran_temuan = $this->lhp->besaran_temuan;
@@ -62,6 +74,7 @@ class LhpDetail extends Component
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Data temuan berhasil disimpan.']);
     }
 
+    // --- Tindak Lanjut Methods ---
     public function openTindakLanjutModal($id = null)
     {
         $this->resetTindakLanjutForm();
@@ -84,40 +97,25 @@ class LhpDetail extends Component
         $this->reset(['tindakLanjutId', 'tindakLanjutDescription', 'tindakLanjutFile', 'editingTindakLanjut']);
         $this->resetErrorBag();
     }
-
-    /**
-     * FIX: Updated saveTindakLanjut method to include all required fields.
-     */
+    
+    // This method is now only for edits without a file change
     public function saveTindakLanjut()
     {
-        $this->validate([
-            'tindakLanjutFile' => $this->tindakLanjutId ? 'nullable|file|max:20480' : 'required|file|max:20480', // 20MB
-            'tindakLanjutDescription' => 'nullable|string|max:1000',
-        ]);
-        
-        $data = [
-            'lhp_id' => $this->lhpId,
-            'description' => $this->tindakLanjutDescription
-        ];
-
         if ($this->tindakLanjutFile) {
-            // Delete old file if editing
-            if ($this->tindakLanjutId && $this->editingTindakLanjut?->file_path) {
-                Storage::disk('public')->delete($this->editingTindakLanjut->file_path);
-            }
-
-            // Store new file and gather its data
-            $file = $this->tindakLanjutFile;
-            $data['file_path'] = $file->store('tindak-lanjut', 'public');
-            $data['file_name'] = $file->getClientOriginalName();
-            $data['mime_type'] = $file->getMimeType();
-            $data['file_size'] = $file->getSize();
-            $data['file_type'] = $this->getFileTypeFromMime($data['mime_type']);
+            // This case is handled by the custom uploader
+            return;
         }
-            
-        TindakLanjut::updateOrCreate(['id' => $this->tindakLanjutId], $data);
+
+        $this->validate(['tindakLanjutDescription' => 'nullable|string|max:1000']);
         
-        $this->dispatch('notify', ['type' => 'success', 'message' => 'Tindak Lanjut berhasil disimpan.']);
+        if ($this->tindakLanjutId) {
+            $tindakLanjut = TindakLanjut::find($this->tindakLanjutId);
+            if ($tindakLanjut) {
+                $tindakLanjut->description = $this->tindakLanjutDescription;
+                $tindakLanjut->save();
+                $this->dispatch('notify', ['type' => 'success', 'message' => 'Keterangan berhasil diperbarui.']);
+            }
+        }
         $this->closeTindakLanjutModal();
         $this->lhp->refresh();
     }
@@ -133,21 +131,48 @@ class LhpDetail extends Component
         $this->lhp->refresh();
     }
 
-    /**
-     * Helper function to determine file category from MIME type.
-     */
-    private function getFileTypeFromMime($mimeType)
+    // --- NEW: Susunan Tim Methods ---
+    public function addTim()
     {
-        if (Str::startsWith($mimeType, 'image/')) return 'image';
-        if (Str::startsWith($mimeType, 'video/')) return 'video';
-        if (Str::startsWith($mimeType, 'audio/')) return 'audio';
-        if ($mimeType === 'application/pdf') return 'pdf';
-        return 'document'; // Default for Word, Excel, etc.
+        $this->validate([
+            'newTimPegawaiId' => 'required|exists:pegawais,id',
+            'newTimJabatanId' => 'required|exists:jabatan_tims,id',
+        ]);
+
+        // Prevent adding the same person twice
+        if ($this->lhp->tim()->where('pegawai_id', $this->newTimPegawaiId)->exists()) {
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Pegawai sudah ada dalam tim.']);
+            return;
+        }
+
+        // Create new PerintahTugas record
+        $this->lhp->tim()->create([
+            'pegawai_id' => $this->newTimPegawaiId,
+            'jabatan_tim_id' => $this->newTimJabatanId
+        ]);
+        
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Anggota tim berhasil ditambahkan.']);
+        $this->reset(['newTimPegawaiId', 'newTimJabatanId']);
+        $this->lhp->refresh();
+    }
+
+    public function removeTim($pegawaiId)
+    {
+        $this->lhp->tim()->where('pegawai_id', $pegawaiId)->delete();
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Anggota tim berhasil dihapus.']);
+        $this->lhp->refresh();
     }
 
     public function render()
     {
-        return view('livewire.lhp-detail')
-            ->layout('components.layouts.app', ['title' => 'Detail LHP: ' . $this->lhp->nomor_lhp]);
+        // Fetch data for the dropdowns in the "Susunan Tim" tab
+        $currentTimIds = $this->lhp->tim->pluck('id');
+        $pegawaiOptions = Pegawai::whereNotIn('id', $currentTimIds)->orderBy('nama')->get();
+        $jabatanTimOptions = JabatanTim::orderBy('nama')->get();
+        
+        return view('livewire.lhp-detail', [
+            'pegawaiOptions' => $pegawaiOptions,
+            'jabatanTimOptions' => $jabatanTimOptions,
+        ])->layout('components.layouts.app', ['title' => 'Detail LHP: ' . $this->lhp->nomor_lhp]);
     }
 }

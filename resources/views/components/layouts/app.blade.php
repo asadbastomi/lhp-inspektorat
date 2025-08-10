@@ -110,7 +110,7 @@
     <header class="sticky top-0 z-40">
         <nav class="container mx-auto my-4 px-6 py-3 card flex justify-between items-center">
             <a href="{{ route('dashboard') }}" class="text-xl font-bold text-[--color-dark]">
-                <i class="fas fa-rocket text-[--color-accent]"></i> SIMONILA
+                <i class="fas fa-rocket text-[--color-accent]"></i> INSPEKTORAT
             </a>
             <div class="hidden md:flex items-center gap-6 text-sm font-medium text-[--color-dark]">
                 <a href="{{ route('dashboard') }}" class="hover:text-[--color-accent] transition {{ request()->routeIs('dashboard') ? 'text-[--color-accent] font-semibold' : '' }}">Dashboard</a>

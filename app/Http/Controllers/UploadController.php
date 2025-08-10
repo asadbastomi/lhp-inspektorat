@@ -13,17 +13,11 @@ class UploadController extends Controller
 {
     public function __construct()
     {
-        // It's generally better to set these in your php.ini file
-        // but this works for a single controller.
         set_time_limit(0);
         ini_set('memory_limit', '512M');
-        
         $this->middleware(['auth']);
     }
     
-    /**
-     * Handle all custom file uploads from the detail page.
-     */
     public function livewireUpload(Request $request)
     {
         Log::info('Upload request received', $request->except('file'));
@@ -39,12 +33,10 @@ class UploadController extends Controller
             $lhpId = $request->input('lhp_id');
             $fieldName = $request->input('field_name');
 
-            // --- Handle Tindak Lanjut Upload ---
             if ($fieldName === 'tindak_lanjut') {
                 return $this->handleTindakLanjutUpload($request, $file, $lhpId);
             }
 
-            // --- Handle Dokumen LHP Upload ---
             $allowedDokumenFields = ['file_surat_tugas', 'file_lhp', 'file_kertas_kerja', 'file_review_sheet', 'file_nota_dinas'];
             if (in_array($fieldName, $allowedDokumenFields)) {
                 return $this->handleDokumenUpload($request, $file, $lhpId, $fieldName);
@@ -53,33 +45,18 @@ class UploadController extends Controller
             throw new \Exception('Invalid field name provided.');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('Validation error during upload', ['errors' => $e->errors()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Validasi gagal: ' . collect($e->errors())->flatten()->first(),
-            ], 422);
-            
+            return response()->json(['success' => false, 'message' => 'Validasi gagal: ' . collect($e->errors())->flatten()->first()], 422);
         } catch (\Exception $e) {
             Log::error('File upload error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'error' => $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Process and save a file for the LHP Dokumen tab.
-     */
     private function handleDokumenUpload(Request $request, $file, $lhpId, $fieldName)
     {
-        // Dokumen tab only accepts PDFs
         $request->validate(['file' => 'mimes:pdf']);
-
         $lhp = Lhp::findOrFail($lhpId);
         
-        // Delete old file if it exists
         if ($lhp->$fieldName && Storage::disk('public')->exists($lhp->$fieldName)) {
             Storage::disk('public')->delete($lhp->$fieldName);
         }
@@ -88,20 +65,20 @@ class UploadController extends Controller
         $lhp->$fieldName = $path;
         $lhp->save();
 
-        Log::info('Dokumen LHP uploaded successfully', ['lhp_id' => $lhpId, 'field' => $fieldName, 'path' => $path]);
-
         return response()->json(['success' => true, 'message' => 'Dokumen berhasil diunggah.']);
     }
 
     /**
-     * Process and save a file for the Tindak Lanjut tab.
+     * FIX: This method now handles both creating and updating Tindak Lanjut records.
      */
     private function handleTindakLanjutUpload(Request $request, $file, $lhpId)
     {
         $description = $request->input('description');
+        $tindakLanjutId = $request->input('tindak_lanjut_id'); // Get the ID for editing
+
         $path = $file->store('tindak-lanjut', 'public');
 
-        TindakLanjut::create([
+        $data = [
             'lhp_id' => $lhpId,
             'description' => $description,
             'file_name' => $file->getClientOriginalName(),
@@ -109,16 +86,27 @@ class UploadController extends Controller
             'mime_type' => $file->getMimeType(),
             'file_size' => $file->getSize(),
             'file_type' => $this->getFileTypeFromMime($file->getMimeType()),
-        ]);
+        ];
 
-        Log::info('Tindak Lanjut uploaded successfully', ['lhp_id' => $lhpId, 'path' => $path]);
+        if ($tindakLanjutId) {
+            // Update existing record
+            $tindakLanjut = TindakLanjut::findOrFail($tindakLanjutId);
+            // Delete old file before updating
+            if ($tindakLanjut->file_path && Storage::disk('public')->exists($tindakLanjut->file_path)) {
+                Storage::disk('public')->delete($tindakLanjut->file_path);
+            }
+            $tindakLanjut->update($data);
+            Log::info('Tindak Lanjut updated successfully', ['id' => $tindakLanjutId]);
+        } else {
+            // Create new record
+            $data['id'] = Str::uuid();
+            TindakLanjut::create($data);
+            Log::info('Tindak Lanjut created successfully', ['lhp_id' => $lhpId]);
+        }
 
-        return response()->json(['success' => true, 'message' => 'Tindak Lanjut berhasil diunggah.']);
+        return response()->json(['success' => true, 'message' => 'Tindak Lanjut berhasil disimpan.']);
     }
 
-    /**
-     * Helper to determine file category from MIME type.
-     */
     private function getFileTypeFromMime($mimeType)
     {
         if (Str::startsWith($mimeType, 'image/')) return 'image';

@@ -1,21 +1,13 @@
-<div class="container mx-auto px-4 py-8" x-data="{ activeTab: window.location.hash.substring(1) || 'dokumen' }" x-init="$watch('activeTab', value => window.location.hash = value)">
+<div class="container mx-auto px-4 py-8" x-data="{ activeTab: window.location.hash.substring(1) || 'susunan-tim' }" x-init="$watch('activeTab', value => window.location.hash = value)">
     <!-- Header Card -->
     <div class="card mb-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-[#263238]">
-                    {{ $lhp->judul_lhp }}
-                </h1>
+                <h1 class="text-3xl font-bold text-[#263238]">{{ $lhp->judul_lhp }}</h1>
                 <div class="flex flex-wrap gap-x-4 gap-y-2 mt-4 text-sm">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#FBC02D]/20 text-[#263238]">
-                        <i class="fas fa-hashtag text-[#1B5E20] mr-2"></i>{{ $lhp->nomor_lhp }}
-                    </span>
-                    <span class="flex items-center text-gray-700">
-                        <i class="far fa-calendar-alt text-[#0277BD] mr-2"></i>{{ $lhp->tanggal_lhp->translatedFormat('d F Y') }}
-                    </span>
-                    <span class="flex items-center text-gray-700">
-                        <i class="fas fa-user-tie text-[#0277BD] mr-2"></i>Dibuat oleh: {{ $lhp->user->name ?? 'N/A' }}
-                    </span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#FBC02D]/20 text-[#263238]"><i class="fas fa-hashtag text-[#1B5E20] mr-2"></i>{{ $lhp->nomor_lhp }}</span>
+                    <span class="flex items-center text-gray-700"><i class="far fa-calendar-alt text-[#0277BD] mr-2"></i>{{ $lhp->tanggal_lhp->translatedFormat('d F Y') }}</span>
+                    <span class="flex items-center text-gray-700"><i class="fas fa-user-tie text-[#0277BD] mr-2"></i>{{ $lhp->user->name ?? 'N/A' }}</span>
                 </div>
             </div>
             <a href="{{ route('lhps') }}" class="btn-primary"><i class="fas fa-arrow-left mr-2"></i> Kembali</a>
@@ -25,6 +17,8 @@
     <!-- Tab Navigation -->
     <div class="glass rounded-t-2xl p-2 mb-0 shadow-md border-b">
         <div class="flex flex-wrap gap-2">
+            <!-- NEW: Susunan Tim Tab -->
+            <button @click="activeTab = 'susunan-tim'" :class="activeTab === 'susunan-tim' ? 'text-white bg-[#1B5E20] shadow-lg' : 'text-[#263238] hover:bg-white/80'" class="flex-1 px-6 py-3 rounded-xl font-medium transition-all"><i class="fas fa-users mr-2"></i> Susunan Tim</button>
             <button @click="activeTab = 'dokumen'" :class="activeTab === 'dokumen' ? 'text-white bg-[#1B5E20] shadow-lg' : 'text-[#263238] hover:bg-white/80'" class="flex-1 px-6 py-3 rounded-xl font-medium transition-all"><i class="fas fa-file-alt mr-2"></i> Dokumen</button>
             <button @click="activeTab = 'temuan'" :class="activeTab === 'temuan' ? 'text-white bg-[#1B5E20] shadow-lg' : 'text-[#263238] hover:bg-white/80'" class="flex-1 px-6 py-3 rounded-xl font-medium transition-all"><i class="fas fa-clipboard-list mr-2"></i> Temuan</button>
             <button @click="activeTab = 'tindak-lanjut'" :class="activeTab === 'tindak-lanjut' ? 'text-white bg-[#1B5E20] shadow-lg' : 'text-[#263238] hover:bg-white/80'" class="flex-1 px-6 py-3 rounded-xl font-medium transition-all"><i class="fas fa-tasks mr-2"></i> Tindak Lanjut <span class="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">{{ $lhp->tindakLanjuts->count() }}</span></button>
@@ -33,6 +27,66 @@
 
     <!-- Tab Content Area -->
     <div class="card min-h-[400px] rounded-t-none">
+        <!-- NEW: Susunan Tim Tab Content -->
+        <div x-show="activeTab === 'susunan-tim'" x-transition.opacity.duration.500ms>
+            <h3 class="text-2xl font-bold text-[#263238] mb-6">Susunan Tim Pemeriksa</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Add Team Member Form -->
+                <div class="md:col-span-1">
+                    <h4 class="font-semibold text-lg text-[#263238] mb-4">Tambah Anggota Tim</h4>
+                    <form wire:submit.prevent="addTim" class="space-y-4">
+                        <div>
+                            <label for="newTimPegawaiId" class="block text-sm font-medium text-gray-700 mb-1">Pegawai</label>
+                            <select wire:model="newTimPegawaiId" id="newTimPegawaiId" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[#1B5E20] focus:border-[#1B5E20]">
+                                <option value="">Pilih Pegawai</option>
+                                @foreach($pegawaiOptions as $pegawai)
+                                    <option value="{{ $pegawai->id }}">{{ $pegawai->nama }}</option>
+                                @endforeach
+                            </select>
+                            @error('newTimPegawaiId') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label for="newTimJabatanId" class="block text-sm font-medium text-gray-700 mb-1">Jabatan dalam Tim</label>
+                            <select wire:model="newTimJabatanId" id="newTimJabatanId" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[#1B5E20] focus:border-[#1B5E20]">
+                                <option value="">Pilih Jabatan</option>
+                                @foreach($jabatanTimOptions as $jabatan)
+                                    <option value="{{ $jabatan->id }}">{{ $jabatan->nama }}</option>
+                                @endforeach
+                            </select>
+                            @error('newTimJabatanId') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="pt-2">
+                            <button type="submit" class="btn-primary w-full flex items-center justify-center">
+                                <i class="fas fa-plus mr-2"></i> Tambahkan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <!-- Team Member List -->
+                <div class="md:col-span-2">
+                    <h4 class="font-semibold text-lg text-[#263238] mb-4">Tim Saat Ini</h4>
+                    <div class="space-y-3">
+                        @forelse($lhp->tim as $anggota)
+                        <div class="bg-white/80 rounded-lg p-3 flex items-center justify-between hover:shadow-md transition-shadow">
+                            <div>
+                                <p class="font-semibold text-[#263238]">{{ $anggota->pegawai->nama }}</p>
+                                <p class="text-sm text-gray-600">{{ $anggota->jabatanTim->nama ?? 'N/A' }}</p>
+                            </div>
+                            <button wire:click="removeTim({{ $anggota->id }})" wire:confirm="Anda yakin ingin menghapus anggota ini dari tim?" class="text-gray-400 hover:text-[#C62828] transition" title="Hapus Anggota">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        @empty
+                        <div class="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                            <i class="fas fa-users-slash fa-3x text-gray-400"></i>
+                            <p class="mt-4 text-gray-600">Belum ada anggota tim yang ditambahkan.</p>
+                        </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Dokumen Tab -->
         <div x-show="activeTab === 'dokumen'" x-transition.opacity.duration.500ms>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -131,26 +185,19 @@
         <div @click="show = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm" x-show="show" x-transition.opacity></div>
         <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl p-8" x-show="show" x-transition>
             <h3 class="text-2xl font-bold text-[#263238] mb-6">{{ $tindakLanjutId ? 'Edit' : 'Tambah' }} Tindak Lanjut</h3>
-            <!-- REMOVED wire:submit -->
             <div class="space-y-4">
                 <div>
                     <label class="font-medium text-gray-700">File Tindak Lanjut</label>
-                    <!-- ADDED ID for JS to target -->
                     <input type="file" id="tindakLanjutFileInput" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100">
                     @if($editingTindakLanjut?->file_name) <p class="text-sm text-gray-500 mt-1">File saat ini: {{ $editingTindakLanjut->file_name }}</p> @endif
                 </div>
                  <div>
                     <label class="font-medium text-gray-700">Keterangan</label>
-                    <!-- ADDED ID for JS to target -->
                     <textarea id="tindakLanjutDescriptionInput" wire:model.defer="tindakLanjutDescription" rows="3" class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:ring-[#1B5E20] focus:border-[#1B5E20]"></textarea>
                  </div>
-                 <!-- Progress Bar for Tindak Lanjut -->
-                 <div id="tindakLanjutProgressContainer" class="w-full bg-gray-200 rounded-full mt-3 hidden">
-                    <div id="tindakLanjutProgressBar" class="bg-[#1B5E20] text-xs text-white text-center p-0.5 leading-none rounded-full" style="width: 0%">0%</div>
-                 </div>
+                 <div id="tindakLanjutProgressContainer" class="w-full bg-gray-200 rounded-full mt-3 hidden"><div id="tindakLanjutProgressBar" class="bg-[#1B5E20] text-xs text-white text-center p-0.5 leading-none rounded-full" style="width: 0%">0%</div></div>
                  <div class="flex justify-end gap-4 pt-4">
                      <button type="button" @click="show = false" class="btn-secondary">Batal</button>
-                     <!-- ADDED ID for JS to target -->
                      <button type="button" id="saveTindakLanjutBtn" class="btn-primary flex items-center justify-center min-w-[120px]">Simpan</button>
                  </div>
             </div>
@@ -178,7 +225,6 @@ document.addEventListener('DOMContentLoaded', function () {
             fileInput.onchange = (event) => {
                 const file = event.target.files[0];
                 if (file) {
-                    // Use the generic uploader function
                     uploadFile(file, container, fieldName);
                 }
             };
@@ -194,28 +240,25 @@ document.addEventListener('DOMContentLoaded', function () {
             const descriptionInput = document.getElementById('tindakLanjutDescriptionInput');
             const file = fileInput.files[0];
             const description = descriptionInput.value;
+            
+            const tindakLanjutId = @this.get('tindakLanjutId');
 
-            if (!file) {
-                // If no file, it might be an edit of the description only.
-                // We let Livewire handle this.
+            if (!file && tindakLanjutId) {
                 @this.saveTindakLanjut();
                 return;
             }
 
-            // If there is a file, use the custom uploader.
+            if (!file && !tindakLanjutId) {
+                Swal.fire({ icon: 'error', title: 'File Diperlukan', text: 'Silakan pilih file untuk diunggah.' });
+                return;
+            }
+
             const container = document.getElementById('tindakLanjutProgressContainer').parentElement;
-            uploadFile(file, container, 'tindak_lanjut', description);
+            uploadFile(file, container, 'tindak_lanjut', description, tindakLanjutId);
         });
     }
 
-    /**
-     * Generic file upload function.
-     * @param {File} file - The file to upload.
-     * @param {HTMLElement} container - The parent element containing the progress bar.
-     * @param {string} fieldName - The type of file being uploaded.
-     * @param {string|null} description - Optional description for Tindak Lanjut.
-     */
-    function uploadFile(file, container, fieldName, description = null) {
+    function uploadFile(file, container, fieldName, description = null, tindakLanjutId = null) {
         const progressContainer = container.querySelector('.progress-container, #tindakLanjutProgressContainer');
         const progressBar = container.querySelector('.progress-bar, #tindakLanjutProgressBar');
         
@@ -229,6 +272,9 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('field_name', fieldName);
         if (description !== null) {
             formData.append('description', description);
+        }
+        if (tindakLanjutId !== null) {
+            formData.append('tindak_lanjut_id', tindakLanjutId);
         }
         
         const xhr = new XMLHttpRequest();
@@ -246,11 +292,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-                // Tell Livewire to refresh its data. This works for both tabs.
                 Livewire.dispatch('upload-completed');
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'File berhasil diunggah!', showConfirmButton: false, timer: 3000 });
-                
-                // If it was a tindak lanjut upload, also close the modal
                 if (fieldName === 'tindak_lanjut') {
                     @this.closeTindakLanjutModal();
                 }

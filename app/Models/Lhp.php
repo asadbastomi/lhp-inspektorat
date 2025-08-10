@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
+use App\Models\PerintahTugas;
 
 class Lhp extends Model
 {
@@ -59,5 +60,27 @@ class Lhp extends Model
     public function tindakLanjuts()
     {
         return $this->hasMany(TindakLanjut::class);
+    }
+    /**
+     * Get the tim records for the LHP.
+     */
+    public function tim()
+    {
+        return $this->hasMany(PerintahTugas::class);
+    }
+
+    /**
+     * Get all pegawais for the LHP.
+     */
+    public function pegawais()
+    {
+        return $this->hasManyThrough(
+            Pegawai::class,
+            PerintahTugas::class,
+            'lhp_id',
+            'id',
+            'id',
+            'pegawai_id'
+        );
     }
 }
