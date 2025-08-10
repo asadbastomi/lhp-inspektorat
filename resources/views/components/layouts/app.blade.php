@@ -77,6 +77,33 @@
                 border: 1px solid rgba(255, 255, 255, 0.6);
             }
         }
+
+
+        /* --- UPDATED: Global Button Styles --- */
+        .btn-primary {
+            background-color: #1B5E20; /* Emerald Green */
+            color: white;
+            border-radius: 0.75rem; /* 12px */
+            font-weight: 600;
+            padding: 0.75rem 1.5rem; /* 12px 24px */
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-primary:hover {
+            background-color: #388E3C; /* Moss Green */
+            box-shadow: 0 4px 15px rgba(27, 94, 32, 0.2);
+            transform: scale(1.05);
+        }
+        .btn-secondary {
+            background-color: #e2e8f0; /* gray-200 */
+            color: #475569; /* gray-600 */
+            border-radius: 0.75rem;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-secondary:hover {
+            background-color: #cbd5e1; /* gray-300 */
+        }
     </style>
 </head>
 <body class="antialiased">

@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Lhp;
 use App\Models\TindakLanjut;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\On;
@@ -84,23 +85,38 @@ class LhpDetail extends Component
         $this->resetErrorBag();
     }
 
+    /**
+     * FIX: Updated saveTindakLanjut method to include all required fields.
+     */
     public function saveTindakLanjut()
     {
         $this->validate([
-            'tindakLanjutFile' => $this->tindakLanjutId ? 'nullable|file|max:20480' : 'required|file|max:20480',
+            'tindakLanjutFile' => $this->tindakLanjutId ? 'nullable|file|max:20480' : 'required|file|max:20480', // 20MB
             'tindakLanjutDescription' => 'nullable|string|max:1000',
         ]);
         
-        $data = ['lhp_id' => $this->lhpId, 'description' => $this->tindakLanjutDescription];
+        $data = [
+            'lhp_id' => $this->lhpId,
+            'description' => $this->tindakLanjutDescription
+        ];
+
         if ($this->tindakLanjutFile) {
+            // Delete old file if editing
             if ($this->tindakLanjutId && $this->editingTindakLanjut?->file_path) {
                 Storage::disk('public')->delete($this->editingTindakLanjut->file_path);
             }
-            $data['file_path'] = $this->tindakLanjutFile->store('tindak-lanjut', 'public');
-            $data['file_name'] = $this->tindakLanjutFile->getClientOriginalName();
+
+            // Store new file and gather its data
+            $file = $this->tindakLanjutFile;
+            $data['file_path'] = $file->store('tindak-lanjut', 'public');
+            $data['file_name'] = $file->getClientOriginalName();
+            $data['mime_type'] = $file->getMimeType();
+            $data['file_size'] = $file->getSize();
+            $data['file_type'] = $this->getFileTypeFromMime($data['mime_type']);
         }
             
         TindakLanjut::updateOrCreate(['id' => $this->tindakLanjutId], $data);
+        
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Tindak Lanjut berhasil disimpan.']);
         $this->closeTindakLanjutModal();
         $this->lhp->refresh();
@@ -115,6 +131,18 @@ class LhpDetail extends Component
         $tindakLanjut->delete();
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Tindak Lanjut berhasil dihapus.']);
         $this->lhp->refresh();
+    }
+
+    /**
+     * Helper function to determine file category from MIME type.
+     */
+    private function getFileTypeFromMime($mimeType)
+    {
+        if (Str::startsWith($mimeType, 'image/')) return 'image';
+        if (Str::startsWith($mimeType, 'video/')) return 'video';
+        if (Str::startsWith($mimeType, 'audio/')) return 'audio';
+        if ($mimeType === 'application/pdf') return 'pdf';
+        return 'document'; // Default for Word, Excel, etc.
     }
 
     public function render()

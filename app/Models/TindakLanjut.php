@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 class TindakLanjut extends Model
 {
     /**
@@ -14,6 +14,7 @@ class TindakLanjut extends Model
      *
      * @var array<int, string>
      */
+    use HasUuids;
     protected $fillable = [
         'lhp_id',
         'file_name',

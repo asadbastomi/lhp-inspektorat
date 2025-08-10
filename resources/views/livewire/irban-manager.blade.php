@@ -1,139 +1,128 @@
-<div class="p-4 sm:p-6 lg:p-8">
-    <div class="sm:flex sm:items-center">
-        <div class="sm:flex-auto">
-            <h1 class="text-2xl font-bold leading-6 text-gray-900">Data Irban</h1>
-            <p class="mt-2 text-sm text-gray-700">Daftar semua Irban yang telah tercatat dalam sistem.</p>
-        </div>
-        <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-            <button wire:click="create()" type="button" class="block rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition ease-in-out duration-150">
-                <i class="fas fa-plus mr-2"></i>Tambah Irban
+<div class="container mx-auto px-4 py-8">
+    <div class="card mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-[--color-dark]">Manajemen Irban</h1>
+                <p class="text-gray-600 mt-1">Kelola semua data Inspektur Pembantu (Irban).</p>
+            </div>
+            <button wire:click="create" class="btn btn-primary w-full md:w-auto">
+                <i class="fas fa-plus mr-2"></i> Tambah Irban
             </button>
         </div>
     </div>
 
-    @if (session()->has('message'))
-        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" class="mt-4 rounded-md bg-green-50 p-4 transition-opacity">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-check-circle text-green-400"></i>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm font-medium text-green-800">{{ session('message') }}</p>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    <div class="mt-8 flow-root">
-        <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-                    <table class="min-w-full divide-y divide-gray-300">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">No</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Nama Irban</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Email</th>
-                                <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                                    <span class="sr-only">Edit</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 bg-white">
-                            @forelse ($irbans as $irban)
-                                <tr>
-                                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">{{ $loop->iteration }}</td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ $irban->name }}</td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ $irban->email }}</td>
-                                    <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                        <button wire:click="edit('{{ $irban->id }}')" class="text-blue-600 hover:text-blue-900">Edit</button>
-                                        <button wire:click="delete('{{ $irban->id }}')" wire:confirm="Are you sure you want to delete this Irban?" class="ml-4 text-red-600 hover:text-red-900">Delete</button>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="py-4 text-center text-sm text-gray-500">No Irban records found.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-                 <div class="mt-4">
-                    {{ $irbans->links() }}
-                </div>
-            </div>
+    <div class="mb-6">
+        <div class="relative">
+            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <input wire:model.live.debounce.300ms="search" type="text" placeholder="Cari nama atau email Irban..."
+                   class="w-full pl-12 pr-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-[--color-accent] focus:border-[--color-accent] transition">
         </div>
     </div>
 
-    <!-- Modal -->
-    <div x-data="{ show: @entangle('isModalOpen') }" x-show="show" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto" 
-         aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <!-- Backdrop -->
-            <div x-show="show" 
-                 x-transition:enter="ease-out duration-300" 
-                 x-transition:enter-start="opacity-0" 
-                 x-transition:enter-end="opacity-100" 
-                 x-transition:leave="ease-in duration-200" 
-                 x-transition:leave-start="opacity-100" 
-                 x-transition:leave-end="opacity-0" 
-                 class="fixed inset-0 transition-opacity bg-gray-500/75 backdrop-blur-sm" 
-                 aria-hidden="true">
-            </div>
-
-            <!-- Modal Panel -->
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div x-show="show" 
-                 x-transition:enter="ease-out duration-300" 
-                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
-                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
-                 x-transition:leave="ease-in duration-200" 
-                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
-                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
-                 class="inline-block w-full max-w-lg p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
-                
-                <h3 class="text-lg font-medium leading-6 text-gray-900" id="modal-title">
-                    {{ $irban_id ? 'Edit' : 'Tambah' }} Irban
-                </h3>
-                
-                <form wire:submit.prevent="store">
-                    <div class="mt-4 grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-4">
-                        
-                        <div class="sm:col-span-2">
-                            <label for="email" class="block text-sm font-medium text-gray-700">Email Irban</label>
-                            <input type="text" wire:model.defer="email" id="email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                            @error('email') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div class="sm:col-span-2">
-                            <label for="pegawai_id" class="block text-sm font-medium text-gray-700">Pilih Irban</label>
-                            <select wire:model.defer="pegawai_id" id="pegawai_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                <option value="">-- Pilih Pegawai --</option>
-                                @foreach($pegawai as $p)
-                                    <option value="{{ $p->id }}">{{ $p->nama }} - {{ $p->jabatan->jabatan }}</option>
-                                @endforeach
-                            </select>
-                            @error('pegawai_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div>
-                            <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-                            <input type="password" wire:model.defer="password" id="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                            @error('password') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
-
-                    <div class="mt-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="inline-flex justify-center w-full rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm">
-                            Simpan
+    <div class="card overflow-x-auto p-0">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50/50">
+                <tr>
+                    @php
+                        $columns = ['name' => 'Nama Irban', 'email' => 'Email'];
+                    @endphp
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-[--color-dark] uppercase tracking-wider">No</th>
+                    @foreach($columns as $field => $label)
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-[--color-dark] uppercase tracking-wider">
+                        <button wire:click="sortBy('{{ $field }}')" class="flex items-center gap-2">
+                            {{ $label }}
+                            @if($sortField === $field) <i class="fas {{ $sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down' }}"></i>
+                            @else <i class="fas fa-sort text-gray-400"></i> @endif
                         </button>
-                        <button type="button" wire:click="closeModal()" class="mt-3 inline-flex justify-center w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm">
-                            Batal
-                        </button>
+                    </th>
+                    @endforeach
+                    <th scope="col" class="relative px-6 py-4"><span class="sr-only">Aksi</span></th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                @forelse ($irbans as $irban)
+                <tr wire:key="{{ $irban->id }}" class="hover:bg-gray-50/70 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loop->iteration }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-[--color-dark]">{{ $irban->name }}</div></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $irban->email }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div class="flex items-center justify-end gap-4">
+                            <button wire:click="edit('{{ $irban->id }}')" class="text-gray-500 hover:text-[--color-secondary] transition" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button wire:click="delete('{{ $irban->id }}')" wire:confirm="Anda yakin ingin menghapus data Irban ini?" class="text-gray-500 hover:text-[--color-accent] transition" title="Hapus"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center">
+                        <div class="text-center">
+                            <i class="fas fa-users-slash fa-3x text-gray-400"></i>
+                            <h3 class="mt-2 text-sm font-medium text-[--color-dark]">Tidak ada data Irban ditemukan</h3>
+                            <p class="mt-1 text-sm text-gray-500">Silakan tambahkan data Irban baru.</p>
+                        </div>
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-6">
+        {{ $irbans->links() }}
+    </div>
+
+    <div x-show="$wire.isModalOpen" x-on:keydown.escape.window="$wire.closeModal()" x-trap.inert.noscroll="$wire.isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4" x-cloak>
+        <div @click="$wire.closeModal()" class="fixed inset-0 bg-black/60 backdrop-blur-sm" x-show="$wire.isModalOpen" x-transition.opacity></div>
+        <div class="card relative w-full max-w-lg bg-white p-8" x-show="$wire.isModalOpen"
+             x-init="$watch('$wire.isModalOpen', value => { if (value) { $nextTick(() => $refs.focusInput.focus()) } })"
+             x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+            
+            <h3 class="text-2xl font-bold text-[--color-dark] mb-6">{{ $irban_id ? 'Edit' : 'Tambah' }} Data Irban</h3>
+            <form wire:submit.prevent="store" class="space-y-6">
+                <div>
+                    <label for="pegawai_id" class="block text-sm font-medium text-[--color-dark] mb-1">Nama Pegawai</label>
+                    <select id="pegawai_id" wire:model="pegawai_id" x-ref="focusInput" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[--color-accent] focus:border-[--color-accent]">
+                        <option value="">Pilih Pegawai</option>
+                        @if($irban_id)
+                            @php
+                                $currentIrbanUser = \App\Models\User::find($irban_id);
+                                if ($currentIrbanUser && $currentIrbanUser->pegawai) {
+                                    $pegawai->prepend($currentIrbanUser->pegawai);
+                                }
+                            @endphp
+                        @endif
+                        @foreach($pegawai as $p)
+                            <option value="{{ $p->id }}">{{ $p->nama }} - {{ optional($p->jabatan)->jabatan }}</option>
+                        @endforeach
+                    </select>
+                    @error('pegawai_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                </div>
+                <div>
+                    <label for="email" class="block text-sm font-medium text-[--color-dark] mb-1">Email</label>
+                    <input type="email" id="email" wire:model="email" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[--color-accent] focus:border-[--color-accent]">
+                    @error('email') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-[--color-dark] mb-1">Password</label>
+                        <input type="password" id="password" wire:model="password" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[--color-accent] focus:border-[--color-accent]" placeholder="{{ $irban_id ? 'Kosongkan jika tidak diubah' : '' }}">
+                        @error('password') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                     </div>
-                </form>
-            </div>
+                    <div>
+                        <label for="password_confirmation" class="block text-sm font-medium text-[--color-dark] mb-1">Konfirmasi Password</label>
+                        <input type="password" id="password_confirmation" wire:model="password_confirmation" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[--color-accent] focus:border-[--color-accent]">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 pt-4">
+                    <button type="button" @click="$wire.closeModal()" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition">Batal</button>
+                    <button type="submit" wire:loading.attr="disabled" class="w-full md:w-auto px-6 py-3 bg-[#1B5E20] text-white rounded-xl font-semibold transition-all hover:bg-[#388E3C] hover:shadow-lg hover:scale-105 flex items-center justify-center">
+                        <i class="fas fa-spinner animate-spin" wire:loading wire:target="store"></i>
+                        <span wire:loading.remove wire:target="store">Simpan</span>
+                        <span wire:loading wire:target="store">Menyimpan...</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
