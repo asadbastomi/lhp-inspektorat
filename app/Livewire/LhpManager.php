@@ -117,7 +117,13 @@ class LhpManager extends Component
             'user_id' => $this->user_id,
         ]);
 
-        session()->flash('message', $this->lhp_id ? 'LHP berhasil diperbarui.' : 'LHP berhasil dibuat.');
+        $isUpdate = $this->lhp_id ? true : false;
+        $this->dispatch('notify', 
+            type: 'success',
+            title: $isUpdate ? 'Berhasil Memperbarui Data' : 'Berhasil Menambahkan Data',
+            message: $isUpdate ? 'LHP berhasil diperbarui.' : 'LHP baru berhasil ditambahkan.',
+            timer: 3000
+        );
 
         $this->closeModal();
         $this->resetInputFields();
@@ -151,7 +157,12 @@ class LhpManager extends Component
         }
         
         $lhp->delete();
-        session()->flash('message', 'LHP berhasil dihapus.');
+        $this->dispatch('notify', 
+            type: 'success',
+            title: 'Berhasil Menghapus Data',
+            message: 'LHP berhasil dihapus.',
+            timer: 3000
+        );
     }
 
     public function prepareUpload($lhpId)
@@ -177,21 +188,36 @@ class LhpManager extends Component
     {
         // Handle the uploaded file from Resumable.js
         if (!isset($data['lhpId']) || !isset($data['filePath'])) {
-            session()->flash('error', 'Data upload tidak valid.');
+            $this->dispatch('notify',
+                type: 'error',
+                title: 'Error',
+                message: 'Data upload tidak valid.',
+                timer: 5000
+            );
             return;
         }
 
         $lhp = Lhp::find($data['lhpId']);
         
         if (!$lhp) {
-            session()->flash('error', 'LHP tidak ditemukan.');
+            $this->dispatch('notify',
+                type: 'error',
+                title: 'Data Tidak Ditemukan',
+                message: 'LHP tidak ditemukan.',
+                timer: 5000
+            );
             return;
         }
 
         // Check if user has permission to upload for this LHP
         $user = Auth::user();
         if ($user->role === 'irban' && $lhp->user_id !== $user->id) {
-            session()->flash('error', 'Anda tidak memiliki izin untuk mengunggah file untuk LHP ini.');
+            $this->dispatch('notify',
+                type: 'error',
+                title: 'Akses Ditolak',
+                message: 'Anda tidak memiliki izin untuk mengunggah file untuk LHP ini.',
+                timer: 5000
+            );
             return;
         }
 
@@ -206,14 +232,24 @@ class LhpManager extends Component
                 'file_lhp' => $data['filePath']
             ]);
             
-            session()->flash('message', 'File LHP berhasil diunggah.');
+            $this->dispatch('notify',
+                type: 'success',
+                title: 'Berhasil',
+                message: 'File LHP berhasil diunggah.',
+                timer: 3000
+            );
             
             // Reset upload-related properties
             $this->reset(['uploadingLhpId', 'uploadingLhpNumber']);
             
         } catch (\Exception $e) {
             \Log::error('Error updating LHP file: ' . $e->getMessage());
-            session()->flash('error', 'Gagal menyimpan file LHP.');
+            $this->dispatch('notify',
+                type: 'error',
+                title: 'Gagal',
+                message: 'Gagal menyimpan file LHP.',
+                timer: 5000
+            );
         }
     }
 
@@ -222,12 +258,22 @@ class LhpManager extends Component
         $lhp = Lhp::findOrFail($id);
         
         if (!$lhp->file_lhp) {
-            session()->flash('error', 'File tidak ditemukan.');
+            $this->dispatch('notify',
+                type: 'error',
+                title: 'File Tidak Ditemukan',
+                message: 'File tidak ditemukan.',
+                timer: 5000
+            );
             return;
         }
 
         if (!Storage::disk('public')->exists($lhp->file_lhp)) {
-            session()->flash('error', 'File tidak ditemukan di storage.');
+            $this->dispatch('notify',
+                type: 'error',
+                title: 'File Tidak Ditemukan',
+                message: 'File tidak ditemukan di storage.',
+                timer: 5000
+            );
             return;
         }
 

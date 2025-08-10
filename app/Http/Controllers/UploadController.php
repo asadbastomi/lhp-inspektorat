@@ -6,12 +6,162 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class UploadController extends Controller
 {
     public function __construct()
     {
+        // Increase PHP's max execution time and memory limit for large files
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
+        ini_set('post_max_size', '500M');
+        ini_set('upload_max_filesize', '500M');
+        ini_set('max_execution_time', '600');
+        
+        // Ensure the uploads directory exists and is writable
+        $uploadPath = storage_path('app/public/uploads');
+        if (!file_exists($uploadPath)) {
+            mkdir($uploadPath, 0777, true);
+        }
+        
         $this->middleware(['auth']);
+    }
+    
+    /**
+     * Handle Livewire file uploads with progress
+     */
+    public function livewireUpload(Request $request)
+    {
+        // Log raw input for debugging
+        Log::info('Livewire upload request received', [
+            'inputs' => $request->except(['file']), // Exclude file content from logs
+            'hasFile' => $request->hasFile('file'),
+            'allFiles' => array_keys($request->allFiles())
+        ]);
+        
+        try {
+            // Check if file exists
+            if (!$request->hasFile('file')) {
+                Log::error('No file in request', [
+                    'files' => $request->allFiles(),
+                    'all_input' => $request->all()
+                ]);
+                throw new \Exception('No file uploaded');
+            }
+            
+            // Get the field_name and lhp_id from the request
+            $fieldName = $request->input('field_name');
+            if (!$fieldName) {
+                throw new \Exception('Field name is required');
+            }
+            
+            $lhpId = $request->input('lhp_id');
+            if (!$lhpId) {
+                throw new \Exception('LHP ID is required');
+            }
+            
+            // Validate the field name
+            $allowedFields = ['file_surat_tugas', 'file_lhp', 'file_kertas_kerja', 'file_review_sheet', 'file_nota_dinas'];
+            if (!in_array($fieldName, $allowedFields)) {
+                throw new \Exception('Invalid field name: ' . $fieldName);
+            }
+            
+            // Validate the file
+            $request->validate([
+                'file' => 'required|file|mimes:pdf|max:204800', // 200MB max
+                'lhp_id' => 'required|exists:lhps,id'
+            ]);
+            
+            $file = $request->file('file');
+            
+            // Store original file info before processing
+            $originalName = $file->getClientOriginalName();
+            $originalSize = $file->getSize();
+            $originalMimeType = $file->getMimeType();
+            
+            // Generate a unique filename
+            $extension = $file->getClientOriginalExtension();
+            $filename = pathinfo($originalName, PATHINFO_FILENAME) . '_' . time() . '.' . $extension;
+            
+            // Ensure the directory exists
+            $directory = 'lhp-documents';
+            if (!Storage::disk('public')->exists($directory)) {
+                Storage::disk('public')->makeDirectory($directory);
+            }
+            
+            // Store the file
+            $path = $file->storeAs($directory, $filename, 'public');
+            
+            if (!$path) {
+                throw new \Exception('Failed to save file to storage');
+            }
+            
+            // Verify file was stored
+            if (!Storage::disk('public')->exists($path)) {
+                throw new \Exception('File was not properly stored');
+            }
+            
+            // Update the database record
+            $lhp = \App\Models\Lhp::findOrFail($lhpId);
+            
+            // Delete old file if it exists
+            if ($lhp->$fieldName && Storage::disk('public')->exists($lhp->$fieldName)) {
+                Storage::disk('public')->delete($lhp->$fieldName);
+                Log::info('Old file deleted', ['path' => $lhp->$fieldName]);
+            }
+            
+            // Save the new file path
+            $lhp->$fieldName = $path;
+            $lhp->save();
+            
+            Log::info('File uploaded and database updated successfully', [
+                'lhp_id' => $lhpId,
+                'field' => $fieldName,
+                'path' => $path,
+                'original_name' => $originalName,
+                'stored_name' => $filename,
+                'size' => $originalSize
+            ]);
+            
+            // Return success response
+            return response()->json([
+                'success' => true,
+                'path' => $path,
+                'filename' => $filename,
+                'field' => $fieldName,
+                'url' => Storage::url($path),
+                'original_name' => $originalName,
+                'size' => $originalSize,
+                'mime_type' => $originalMimeType,
+                'message' => 'File berhasil diunggah.'
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation error during upload', [
+                'errors' => $e->errors(),
+                'field' => $fieldName ?? 'unknown'
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal: ' . collect($e->errors())->flatten()->first(),
+                'errors' => $e->errors()
+            ], 422);
+            
+        } catch (\Exception $e) {
+            Log::error('File upload error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'field' => $fieldName ?? 'unknown',
+                'lhp_id' => $lhpId ?? 'unknown'
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -228,78 +378,68 @@ class UploadController extends Controller
             }
             
             fclose($out);
+            $out = null; // Set to null after closing
             
             // Store the file directly using PHP functions
             $finalPath = $fullStoragePath . '/' . $newFilename;
             
-            try {
-                // Close the temp file before moving it
-                if (is_resource($out)) {
-                    fclose($out);
-                    $out = null;
-                }
+            // Move the temp file to final location with error handling
+            $moveResult = @rename($tempFile, $finalPath);
+            if (!$moveResult) {
+                $error = error_get_last();
+                $errorMsg = $error ? $error['message'] : 'Unknown error';
                 
-                // Move the temp file to final location with error handling
-                $moveResult = @rename($tempFile, $finalPath);
-                if (!$moveResult) {
-                    $error = error_get_last();
-                    $errorMsg = $error ? $error['message'] : 'Unknown error';
-                    
-                    Log::error('Failed to move file', [
-                        'from' => $tempFile,
-                        'to' => $finalPath,
-                        'error' => $errorMsg,
-                        'temp_exists' => file_exists($tempFile) ? 'yes' : 'no',
-                        'target_dir_exists' => is_dir(dirname($finalPath)) ? 'yes' : 'no',
-                        'target_dir_writable' => is_writable(dirname($finalPath)) ? 'yes' : 'no'
-                    ]);
-                    
+                Log::error('Failed to move file', [
+                    'from' => $tempFile,
+                    'to' => $finalPath,
+                    'error' => $errorMsg,
+                    'temp_exists' => file_exists($tempFile) ? 'yes' : 'no',
+                    'target_dir_exists' => is_dir(dirname($finalPath)) ? 'yes' : 'no',
+                    'target_dir_writable' => is_writable(dirname($finalPath)) ? 'yes' : 'no'
+                ]);
+                
+                // Try copy as fallback
+                if (file_exists($tempFile) && @copy($tempFile, $finalPath)) {
+                    @unlink($tempFile);
+                    Log::info('Used copy as fallback for file move');
+                } else {
                     throw new \Exception(sprintf(
                         'Failed to move file to final location: %s',
                         $errorMsg
                     ));
                 }
-                
-                // Set proper permissions
-                if (!chmod($finalPath, 0664)) {
-                    Log::warning('Failed to set file permissions', ['file' => $finalPath]);
-                }
-                    
-                // Verify the file exists
-                if (!file_exists($finalPath)) {
-                    throw new \Exception('File was not created at expected location');
-                }
-                
-                $storedPath = $storagePath . '/' . $newFilename;
-                
-                Log::info('File stored successfully', [
-                    'storedPath' => $storedPath,
-                    'fullPath' => $finalPath,
-                    'fileSize' => filesize($finalPath) . ' bytes',
-                    'fileExists' => file_exists($finalPath) ? 'yes' : 'no'
-                ]);
-                
-            } catch (\Exception $e) {
-                Log::error('Error storing file', [
-                    'error' => $e->getMessage(),
-                    'storagePath' => $storagePath,
-                    'finalPath' => $finalPath,
-                    'tempFile' => $tempFile
-                ]);
-                throw new \Exception('Failed to store file: ' . $e->getMessage());
             }
+            
+            // Set proper permissions
+            if (!@chmod($finalPath, 0664)) {
+                Log::warning('Failed to set file permissions', ['file' => $finalPath]);
+            }
+                
+            // Verify the file exists
+            if (!file_exists($finalPath)) {
+                throw new \Exception('File was not created at expected location');
+            }
+            
+            $storedPath = $storagePath . '/' . $newFilename;
+            
+            Log::info('File stored successfully', [
+                'storedPath' => $storedPath,
+                'fullPath' => $finalPath,
+                'fileSize' => filesize($finalPath) . ' bytes',
+                'fileExists' => file_exists($finalPath) ? 'yes' : 'no'
+            ]);
             
             // Clean up chunks
             for ($i = 1; $i <= $totalChunks; $i++) {
                 $chunkFile = $chunkPath . '/' . $filename . '.part' . $i;
                 if (file_exists($chunkFile)) {
-                    unlink($chunkFile);
+                    @unlink($chunkFile);
                 }
             }
             
             // Remove chunk directory
             if (is_dir($chunkPath)) {
-                rmdir($chunkPath);
+                @rmdir($chunkPath);
             }
             
             // Get file info using Storage
@@ -337,8 +477,20 @@ class UploadController extends Controller
             ]);
             
             // Clean up on error
+            if ($tempFile && file_exists($tempFile)) {
+                @unlink($tempFile);
+            }
+            
             if (isset($finalPath) && file_exists($finalPath)) {
                 @unlink($finalPath);
+            }
+            
+            // Clean up chunks on error
+            for ($i = 1; $i <= $totalChunks; $i++) {
+                $chunkFile = $chunkPath . '/' . $filename . '.part' . $i;
+                if (file_exists($chunkFile)) {
+                    @unlink($chunkFile);
+                }
             }
             
             return response()->json([

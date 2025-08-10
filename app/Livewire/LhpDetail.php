@@ -3,8 +3,8 @@
 namespace App\Livewire;
 
 use Livewire\Component;
-use App\Models\Lhp;
 use Livewire\WithFileUploads;
+use App\Models\Lhp;
 use Illuminate\Support\Facades\Storage;
 
 class LhpDetail extends Component
@@ -14,113 +14,178 @@ class LhpDetail extends Component
     public $lhp;
     public $lhpId;
     
-    // File uploads - Group 1
+    // File properties
     public $file_surat_tugas;
     public $file_lhp;
     public $file_kertas_kerja;
     public $file_review_sheet;
     public $file_nota_dinas;
     
-    // Findings - Group 2
+    // Other properties
     public $temuan;
     public $rincian_rekomendasi;
     public $besaran_temuan;
     public $tindak_lanjut;
-
-    protected $rules = [
-        'file_surat_tugas' => 'nullable|file|mimes:pdf|max:20480', // 20MB max
-        'file_lhp' => 'nullable|file|mimes:pdf|max:204800', // 200MB max
-        'file_kertas_kerja' => 'nullable|file|mimes:pdf|max:102400', // 100MB max
-        'file_review_sheet' => 'nullable|file|mimes:pdf|max:51200', // 50MB max
-        'file_nota_dinas' => 'nullable|file|mimes:pdf|max:51200', // 50MB max
-        'temuan' => 'nullable|string',
-        'rincian_rekomendasi' => 'nullable|string',
-        'besaran_temuan' => 'nullable|string',
-        'tindak_lanjut' => 'nullable|string',
-    ];
+    
+    // Upload progress tracking
+    public $uploadProgress = [];
+    public $timeRemaining = [];
+    
+    public $message = '';
 
     public function mount($id)
     {
         $this->lhpId = $id;
-        $this->loadLhpData();
-    }
-
-    public function loadLhpData()
-    {
-        $this->lhp = Lhp::findOrFail($this->lhpId);
+        $this->lhp = Lhp::findOrFail($id);
         
-        // Initialize form fields with existing data
+        // Set the LHP ID in session for the upload controller
+        session(['current_lhp_id' => $id]);
+        
+        // Load existing data
         $this->temuan = $this->lhp->temuan;
         $this->rincian_rekomendasi = $this->lhp->rincian_rekomendasi;
         $this->besaran_temuan = $this->lhp->besaran_temuan;
         $this->tindak_lanjut = $this->lhp->tindak_lanjut;
+        
+        // Initialize upload progress
+        $this->uploadProgress = [
+            'file_surat_tugas' => 0,
+            'file_lhp' => 0,
+            'file_kertas_kerja' => 0,
+            'file_review_sheet' => 0,
+            'file_nota_dinas' => 0,
+        ];
+        
+        $this->timeRemaining = [
+            'file_surat_tugas' => 'Menghitung...',
+            'file_lhp' => 'Menghitung...',
+            'file_kertas_kerja' => 'Menghitung...',
+            'file_review_sheet' => 'Menghitung...',
+            'file_nota_dinas' => 'Menghitung...',
+        ];
+    }
+
+    public function updateUploadProgress($fieldName, $progress, $uploaded = 0, $total = 0)
+    {
+        $this->uploadProgress[$fieldName] = $progress;
+        
+        // Calculate time remaining
+        if ($progress > 0 && $progress < 100) {
+            $elapsed = time() - (session('upload_start_' . $fieldName) ?: time());
+            if ($elapsed > 0) {
+                $rate = $uploaded / $elapsed;
+                $remaining = ($total - $uploaded) / $rate;
+                
+                if ($remaining < 60) {
+                    $this->timeRemaining[$fieldName] = round($remaining) . ' detik';
+                } elseif ($remaining < 3600) {
+                    $this->timeRemaining[$fieldName] = round($remaining / 60) . ' menit';
+                } else {
+                    $this->timeRemaining[$fieldName] = round($remaining / 3600, 1) . ' jam';
+                }
+            }
+        } elseif ($progress >= 100) {
+            $this->timeRemaining[$fieldName] = 'Selesai';
+        }
+        
+        if ($progress == 0) {
+            session(['upload_start_' . $fieldName => time()]);
+        }
+    }
+
+    public function refresh()
+    {
+        // Reload the LHP data from database
+        $this->lhp = Lhp::findOrFail($this->lhpId);
+        
+        // Re-set session ID
+        session(['current_lhp_id' => $this->lhpId]);
+        
+        // Clear message after 3 seconds
+        if ($this->message) {
+            $this->dispatch('show-message');
+        }
+    }
+
+    public function deleteFile($fieldName)
+    {
+        try {
+            // Validate field name
+            $allowedFields = ['file_surat_tugas', 'file_lhp', 'file_kertas_kerja', 'file_review_sheet', 'file_nota_dinas'];
+            if (!in_array($fieldName, $allowedFields)) {
+                $this->dispatch('notify', [
+                    'type' => 'error',
+                    'title' => 'Error!',
+                    'message' => 'Field tidak valid'
+                ]);
+                return;
+            }
+            
+            // Delete file from storage
+            if ($this->lhp->$fieldName && Storage::disk('public')->exists($this->lhp->$fieldName)) {
+                Storage::disk('public')->delete($this->lhp->$fieldName);
+            }
+            
+            // Update database
+            $this->lhp->$fieldName = null;
+            $this->lhp->save();
+            
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'title' => 'Berhasil!',
+                'message' => 'File berhasil dihapus'
+            ]);
+            
+            // Refresh the component
+            $this->refresh();
+            
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Error!',
+                'message' => 'Terjadi kesalahan saat menghapus file: ' . $e->getMessage()
+            ]);
+        }
     }
 
     public function save()
     {
-        $this->validate();
-        
-        $lhp = $this->lhp;
-        
-        // Handle file uploads - Group 1
-        if ($this->file_surat_tugas) {
-            $path = $this->file_surat_tugas->store('lhp-documents', 'public');
-            $lhp->file_surat_tugas = $path;
-        }
-        
-        if ($this->file_lhp) {
-            $path = $this->file_lhp->store('lhp-documents', 'public');
-            $lhp->file_lhp = $path;
-        }
-        
-        if ($this->file_kertas_kerja) {
-            $path = $this->file_kertas_kerja->store('lhp-documents', 'public');
-            $lhp->file_kertas_kerja = $path;
-        }
-        
-        if ($this->file_review_sheet) {
-            $path = $this->file_review_sheet->store('lhp-documents', 'public');
-            $lhp->file_review_sheet = $path;
-        }
-        
-        if ($this->file_nota_dinas) {
-            $path = $this->file_nota_dinas->store('lhp-documents', 'public');
-            $lhp->file_nota_dinas = $path;
-        }
-        
-        // Save findings - Group 2
-        $lhp->temuan = $this->temuan;
-        $lhp->rincian_rekomendasi = $this->rincian_rekomendasi;
-        $lhp->besaran_temuan = $this->besaran_temuan;
-        $lhp->tindak_lanjut = $this->tindak_lanjut;
-        
-        $lhp->save();
-        
-        session()->flash('message', 'Data berhasil disimpan.');
-        $this->loadLhpData(); // Refresh the data
-        
-        // Reset file inputs
-        $this->reset(['file_surat_tugas', 'file_lhp', 'file_kertas_kerja', 'file_review_sheet', 'file_nota_dinas']);
-    }
-
-    public function deleteFile($field)
-    {
-        if (in_array($field, ['file_surat_tugas', 'file_lhp', 'file_kertas_kerja', 'file_review_sheet', 'file_nota_dinas'])) {
-            $lhp = $this->lhp;
-            if ($lhp->$field) {
-                Storage::disk('public')->delete($lhp->$field);
-                $lhp->$field = null;
-                $lhp->save();
-                $this->loadLhpData();
-                session()->flash('message', 'File berhasil dihapus.');
-            }
+        try {
+            $this->validate([
+                'temuan' => 'nullable|string',
+                'rincian_rekomendasi' => 'nullable|string',
+                'besaran_temuan' => 'nullable|string',
+                'tindak_lanjut' => 'nullable|string',
+            ]);
+            
+            // Update the LHP record
+            $this->lhp->update([
+                'temuan' => $this->temuan,
+                'rincian_rekomendasi' => $this->rincian_rekomendasi,
+                'besaran_temuan' => $this->besaran_temuan,
+                'tindak_lanjut' => $this->tindak_lanjut,
+            ]);
+            
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'title' => 'Berhasil!',
+                'message' => 'Data berhasil disimpan'
+            ]);
+            
+            // Refresh the component
+            $this->refresh();
+            
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Error!',
+                'message' => 'Gagal menyimpan data: ' . $e->getMessage()
+            ]);
         }
     }
 
     public function render()
     {
-        return view('livewire.lhp-detail', [
-            'lhp' => $this->lhp
-        ])->layout('components.layouts.admin');
+        return view('livewire.lhp-detail')->layout('components.layouts.admin');
     }
 }

@@ -46,8 +46,62 @@
                                     </button>
                                 </div>
                             @else
-                                <input type="file" wire:model="file_surat_tugas" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                @error('file_surat_tugas') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                <div class="space-y-2">
+                                    <input type="file" wire:model="file_surat_tugas" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                    @error('file_surat_tugas') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    
+                                    <div class="upload-progress hidden space-y-1 mt-2" 
+                                         x-data="{ 
+                                            progress: 0, 
+                                            speed: 0, 
+                                            timeRemaining: 'Menghitung...', 
+                                            uploaded: 0, 
+                                            total: 0,
+                                            formatFileSize(bytes) {
+                                                if (!bytes || bytes === 0) return '0 Bytes';
+                                                const k = 1024;
+                                                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                                                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                                            }
+                                         }" 
+                                         x-init="
+                                            $watch('progress', value => {
+                                                const progressBar = $el.querySelector('.progress-bar');
+                                                if (progressBar) {
+                                                    progressBar.style.width = value + '%';
+                                                    progressBar.classList.toggle('bg-blue-600', value < 100);
+                                                    progressBar.classList.toggle('bg-green-500', value === 100);
+                                                }
+                                            });
+                                            
+                                            // Listen for progress updates
+                                            window.addEventListener('upload-progress-updated', (e) => {
+                                                if (e.detail.name === 'file_surat_tugas') {
+                                                    progress = e.detail.progress;
+                                                    const fileInput = $el.closest('dd').querySelector('input[type=file]');
+                                                    if (fileInput && fileInput.files[0]) {
+                                                        uploaded = fileInput.files[0].size * (progress / 100);
+                                                        total = fileInput.files[0].size;
+                                                    }
+                                                }
+                                            });
+                                         ">
+                                        <div class="flex justify-between text-xs text-gray-600">
+                                            <span class="font-medium">Mengunggah...</span>
+                                            <span x-text="timeRemaining"></span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                            <div class="bg-blue-600 h-2 rounded-full progress-bar transition-all duration-300 ease-in-out" 
+                                                 :class="{ 'animate-pulse': progress < 100 }">
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between text-xs text-gray-500">
+                                            <span x-text="formatFileSize(uploaded) + ' / ' + formatFileSize(total)"></span>
+                                            <span x-text="(progress || 0).toFixed(1) + '%'"></span>
+                                        </div>
+                                    </div>
+                                </div>
                             @endif
                         </dd>
                     </div>
@@ -66,8 +120,62 @@
                                     </button>
                                 </div>
                             @else
-                                <input type="file" wire:model="file_lhp" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                @error('file_lhp') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                <div class="space-y-2">
+                                    <input type="file" wire:model="file_lhp" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                    @error('file_lhp') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    
+                                    <div class="upload-progress hidden space-y-1 mt-2" 
+                                         x-data="{ 
+                                            progress: 0, 
+                                            speed: 0, 
+                                            timeRemaining: 'Menghitung...', 
+                                            uploaded: 0, 
+                                            total: 0,
+                                            formatFileSize(bytes) {
+                                                if (!bytes || bytes === 0) return '0 Bytes';
+                                                const k = 1024;
+                                                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                                                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                                            }
+                                         }" 
+                                         x-init="
+                                            $watch('progress', value => {
+                                                const progressBar = $el.querySelector('.progress-bar');
+                                                if (progressBar) {
+                                                    progressBar.style.width = value + '%';
+                                                    progressBar.classList.toggle('bg-blue-600', value < 100);
+                                                    progressBar.classList.toggle('bg-green-500', value === 100);
+                                                }
+                                            });
+                                            
+                                            // Listen for progress updates
+                                            window.addEventListener('upload-progress-updated', (e) => {
+                                                if (e.detail.name === 'file_lhp') {
+                                                    progress = e.detail.progress;
+                                                    const fileInput = $el.closest('dd').querySelector('input[type=file]');
+                                                    if (fileInput && fileInput.files[0]) {
+                                                        uploaded = fileInput.files[0].size * (progress / 100);
+                                                        total = fileInput.files[0].size;
+                                                    }
+                                                }
+                                            });
+                                         ">
+                                        <div class="flex justify-between text-xs text-gray-600">
+                                            <span class="font-medium">Mengunggah...</span>
+                                            <span x-text="timeRemaining"></span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                            <div class="bg-blue-600 h-2 rounded-full progress-bar transition-all duration-300 ease-in-out" 
+                                                 :class="{ 'animate-pulse': progress < 100 }">
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between text-xs text-gray-500">
+                                            <span x-text="formatFileSize(uploaded) + ' / ' + formatFileSize(total)"></span>
+                                            <span x-text="(progress || 0).toFixed(1) + '%'"></span>
+                                        </div>
+                                    </div>
+                                </div>
                             @endif
                         </dd>
                     </div>
@@ -86,8 +194,62 @@
                                     </button>
                                 </div>
                             @else
-                                <input type="file" wire:model="file_kertas_kerja" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                @error('file_kertas_kerja') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                <div class="space-y-2">
+                                    <input type="file" wire:model="file_kertas_kerja" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                    @error('file_kertas_kerja') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    
+                                    <div class="upload-progress hidden space-y-1 mt-2" 
+                                         x-data="{ 
+                                            progress: 0, 
+                                            speed: 0, 
+                                            timeRemaining: 'Menghitung...', 
+                                            uploaded: 0, 
+                                            total: 0,
+                                            formatFileSize(bytes) {
+                                                if (!bytes || bytes === 0) return '0 Bytes';
+                                                const k = 1024;
+                                                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                                                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                                            }
+                                         }" 
+                                         x-init="
+                                            $watch('progress', value => {
+                                                const progressBar = $el.querySelector('.progress-bar');
+                                                if (progressBar) {
+                                                    progressBar.style.width = value + '%';
+                                                    progressBar.classList.toggle('bg-blue-600', value < 100);
+                                                    progressBar.classList.toggle('bg-green-500', value === 100);
+                                                }
+                                            });
+                                            
+                                            // Listen for progress updates
+                                            window.addEventListener('upload-progress-updated', (e) => {
+                                                if (e.detail.name === 'file_kertas_kerja') {
+                                                    progress = e.detail.progress;
+                                                    const fileInput = $el.closest('dd').querySelector('input[type=file]');
+                                                    if (fileInput && fileInput.files[0]) {
+                                                        uploaded = fileInput.files[0].size * (progress / 100);
+                                                        total = fileInput.files[0].size;
+                                                    }
+                                                }
+                                            });
+                                         ">
+                                        <div class="flex justify-between text-xs text-gray-600">
+                                            <span class="font-medium">Mengunggah...</span>
+                                            <span x-text="timeRemaining"></span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                            <div class="bg-blue-600 h-2 rounded-full progress-bar transition-all duration-300 ease-in-out" 
+                                                 :class="{ 'animate-pulse': progress < 100 }">
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between text-xs text-gray-500">
+                                            <span x-text="formatFileSize(uploaded) + ' / ' + formatFileSize(total)"></span>
+                                            <span x-text="(progress || 0).toFixed(1) + '%'"></span>
+                                        </div>
+                                    </div>
+                                </div>
                             @endif
                         </dd>
                     </div>
@@ -106,8 +268,62 @@
                                     </button>
                                 </div>
                             @else
-                                <input type="file" wire:model="file_review_sheet" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                @error('file_review_sheet') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                <div class="space-y-2">
+                                    <input type="file" wire:model="file_review_sheet" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                    @error('file_review_sheet') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    
+                                    <div class="upload-progress hidden space-y-1 mt-2" 
+                                         x-data="{ 
+                                            progress: 0, 
+                                            speed: 0, 
+                                            timeRemaining: 'Menghitung...', 
+                                            uploaded: 0, 
+                                            total: 0,
+                                            formatFileSize(bytes) {
+                                                if (!bytes || bytes === 0) return '0 Bytes';
+                                                const k = 1024;
+                                                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                                                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                                            }
+                                         }" 
+                                         x-init="
+                                            $watch('progress', value => {
+                                                const progressBar = $el.querySelector('.progress-bar');
+                                                if (progressBar) {
+                                                    progressBar.style.width = value + '%';
+                                                    progressBar.classList.toggle('bg-blue-600', value < 100);
+                                                    progressBar.classList.toggle('bg-green-500', value === 100);
+                                                }
+                                            });
+                                            
+                                            // Listen for progress updates
+                                            window.addEventListener('upload-progress-updated', (e) => {
+                                                if (e.detail.name === 'file_review_sheet') {
+                                                    progress = e.detail.progress;
+                                                    const fileInput = $el.closest('dd').querySelector('input[type=file]');
+                                                    if (fileInput && fileInput.files[0]) {
+                                                        uploaded = fileInput.files[0].size * (progress / 100);
+                                                        total = fileInput.files[0].size;
+                                                    }
+                                                }
+                                            });
+                                         ">
+                                        <div class="flex justify-between text-xs text-gray-600">
+                                            <span class="font-medium">Mengunggah...</span>
+                                            <span x-text="timeRemaining"></span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                            <div class="bg-blue-600 h-2 rounded-full progress-bar transition-all duration-300 ease-in-out" 
+                                                 :class="{ 'animate-pulse': progress < 100 }">
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between text-xs text-gray-500">
+                                            <span x-text="formatFileSize(uploaded) + ' / ' + formatFileSize(total)"></span>
+                                            <span x-text="(progress || 0).toFixed(1) + '%'"></span>
+                                        </div>
+                                    </div>
+                                </div>
                             @endif
                         </dd>
                     </div>
@@ -126,8 +342,62 @@
                                     </button>
                                 </div>
                             @else
-                                <input type="file" wire:model="file_nota_dinas" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                @error('file_nota_dinas') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                <div class="space-y-2">
+                                    <input type="file" wire:model="file_nota_dinas" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                    @error('file_nota_dinas') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    
+                                    <div class="upload-progress hidden space-y-1 mt-2" 
+                                         x-data="{ 
+                                            progress: 0, 
+                                            speed: 0, 
+                                            timeRemaining: 'Menghitung...', 
+                                            uploaded: 0, 
+                                            total: 0,
+                                            formatFileSize(bytes) {
+                                                if (!bytes || bytes === 0) return '0 Bytes';
+                                                const k = 1024;
+                                                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                                                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                                            }
+                                         }" 
+                                         x-init="
+                                            $watch('progress', value => {
+                                                const progressBar = $el.querySelector('.progress-bar');
+                                                if (progressBar) {
+                                                    progressBar.style.width = value + '%';
+                                                    progressBar.classList.toggle('bg-blue-600', value < 100);
+                                                    progressBar.classList.toggle('bg-green-500', value === 100);
+                                                }
+                                            });
+                                            
+                                            // Listen for progress updates
+                                            window.addEventListener('upload-progress-updated', (e) => {
+                                                if (e.detail.name === 'file_nota_dinas') {
+                                                    progress = e.detail.progress;
+                                                    const fileInput = $el.closest('dd').querySelector('input[type=file]');
+                                                    if (fileInput && fileInput.files[0]) {
+                                                        uploaded = fileInput.files[0].size * (progress / 100);
+                                                        total = fileInput.files[0].size;
+                                                    }
+                                                }
+                                            });
+                                         ">
+                                        <div class="flex justify-between text-xs text-gray-600">
+                                            <span class="font-medium">Mengunggah...</span>
+                                            <span x-text="timeRemaining"></span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                            <div class="bg-blue-600 h-2 rounded-full progress-bar transition-all duration-300 ease-in-out" 
+                                                 :class="{ 'animate-pulse': progress < 100 }">
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between text-xs text-gray-500">
+                                            <span x-text="formatFileSize(uploaded) + ' / ' + formatFileSize(total)"></span>
+                                            <span x-text="(progress || 0).toFixed(1) + '%'"></span>
+                                        </div>
+                                    </div>
+                                </div>
                             @endif
                         </dd>
                     </div>
@@ -135,6 +405,7 @@
             </div>
         </div>
 
+        <!-- Rest of the form remains the same... -->
         <!-- Group 2: Findings -->
         <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
             <div class="px-4 py-5 sm:px-6 bg-gray-50">
@@ -190,10 +461,252 @@
     </form>
 </div>
 
+@push('styles')
+<style>
+    .progress-bar {
+        transition: width 0.3s ease-in-out;
+    }
+    .animate-pulse-slow {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    /* SweetAlert2 Customizations */
+    .swal2-popup {
+        font-size: 0.9rem !important;
+    }
+    .swal2-title {
+        font-size: 1.2rem !important;
+    }
+</style>
+@endpush
+
 @push('scripts')
+<!-- SweetAlert2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    document.addEventListener('livewire:load', function () {
-        // Initialize any JavaScript if needed
+    document.addEventListener('livewire:initialized', () => {
+        // Get the LHP ID from the Livewire component
+        const lhpId = @json($lhp->id);
+        
+        // Handle file input changes - escape the colon in wire:model
+        document.querySelectorAll('input[type="file"][wire\\:model]').forEach(input => {
+            input.addEventListener('change', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const fieldName = this.getAttribute('wire:model');
+                const file = this.files[0];
+                const fileInput = this; // Store reference to the input
+                
+                if (!file) return;
+                
+                // Validate file type
+                const validTypes = ['application/pdf'];
+                if (!validTypes.includes(file.type)) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Format File Tidak Valid',
+                        text: 'Hanya file PDF yang diizinkan.',
+                        confirmButtonText: 'Mengerti'
+                    });
+                    this.value = ''; // Clear the file input
+                    return;
+                }
+                
+                // Validate file size (200MB)
+                const maxSize = 200 * 1024 * 1024; // 200MB in bytes
+                if (file.size > maxSize) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Ukuran File Terlalu Besar',
+                        text: 'Ukuran file melebihi batas maksimal 200MB.',
+                        confirmButtonText: 'Mengerti'
+                    });
+                    this.value = ''; // Clear the file input
+                    return;
+                }
+                
+                // Create a fresh FormData instance
+                const formData = new FormData();
+                
+                // Append the file with the correct field name
+                formData.append('file', file);
+                formData.append('field_name', fieldName);
+                formData.append('lhp_id', lhpId); // Add the LHP ID
+                
+                // Log file info for debugging
+                console.log('File to upload:', {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    lastModified: file.lastModified,
+                    lhpId: lhpId
+                });
+                
+                // Show progress container
+                const progressContainer = this.closest('dd').querySelector('.upload-progress');
+                if (progressContainer) {
+                    progressContainer.classList.remove('hidden');
+                    // Clear any previous errors
+                    const errorElement = progressContainer.querySelector('.text-red-500');
+                    if (errorElement) errorElement.textContent = '';
+                }
+                
+                // Create a new XMLHttpRequest
+                const xhr = new XMLHttpRequest();
+                
+                // Configure the request
+                const uploadUrl = '{{ route('livewire.upload-file') }}';
+                console.log('Upload URL:', uploadUrl); // Debug log
+                xhr.open('POST', uploadUrl, true);
+                
+                // Set CSRF token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                
+                // Handle upload progress
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = Math.round((e.loaded / e.total) * 100);
+                        console.log(`Upload progress: ${percentComplete}%`);
+                        
+                        // Dispatch progress event for Alpine.js
+                        window.dispatchEvent(new CustomEvent('upload-progress-updated', {
+                            detail: {
+                                name: fieldName,
+                                progress: percentComplete
+                            }
+                        }));
+                        
+                        // Update Livewire component with progress
+                        @this.updateUploadProgress(
+                            fieldName, 
+                            percentComplete,
+                            e.loaded,
+                            e.total
+                        );
+                    }
+                };
+                
+                // Handle successful upload
+                xhr.onload = () => {
+                    console.log('Upload complete. Status:', xhr.status);
+                    
+                    if (xhr.status === 200) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.success) {
+                                // Hide progress container after successful upload
+                                if (progressContainer) {
+                                    setTimeout(() => {
+                                        progressContainer.classList.add('hidden');
+                                    }, 1000);
+                                }
+                                
+                                // Reset the input to allow re-uploading the same file
+                                fileInput.value = '';
+                                
+                                // Refresh the Livewire component to show the uploaded file
+                                @this.refresh();
+                                
+                                // Show success message with SweetAlert2
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil!',
+                                    text: 'File berhasil diunggah',
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 3000,
+                                    timerProgressBar: true,
+                                    didOpen: (toast) => {
+                                        toast.addEventListener('mouseenter', Swal.stopTimer);
+                                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                                    }
+                                });
+                            } else {
+                                showUploadError(progressContainer, response.message || 'Upload gagal');
+                            }
+                        } catch (e) {
+                            console.error('Error parsing upload response:', e);
+                            showUploadError(progressContainer, 'Terjadi kesalahan saat memproses respons');
+                        }
+                    } else {
+                        let errorMessage = `Server error: ${xhr.status} ${xhr.statusText}`;
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            errorMessage = response.message || errorMessage;
+                        } catch (e) {}
+                        showUploadError(progressContainer, errorMessage);
+                    }
+                };
+                
+                // Handle upload errors
+                xhr.onerror = () => {
+                    console.error('Upload error occurred');
+                    showUploadError(progressContainer, 'Kesalahan koneksi saat mengunggah file');
+                };
+                
+                // Handle timeout
+                xhr.ontimeout = () => {
+                    console.error('Upload timed out');
+                    showUploadError(progressContainer, 'Waktu unggah habis. Silakan coba lagi.');
+                };
+                
+                // Set timeout (5 minutes)
+                xhr.timeout = 5 * 60 * 1000;
+                
+                // Function to show upload errors
+                function showUploadError(container, message) {
+                    console.error('Upload error:', message);
+                    // Show SweetAlert2 error
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Upload Gagal',
+                        text: message,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 5000,
+                        timerProgressBar: true,
+                        didOpen: (toast) => {
+                            toast.addEventListener('mouseenter', Swal.stopTimer);
+                            toast.addEventListener('mouseleave', Swal.resumeTimer);
+                        }
+                    });
+                }
+                
+                // Show loading notification with SweetAlert2
+                let timerInterval;
+                Swal.fire({
+                    title: 'Mengunggah File',
+                    html: `Sedang mengunggah <b>${file.name}</b>...`, 
+                    timerProgressBar: true,
+                    didOpen: () => {
+                        Swal.showLoading();
+                        const b = Swal.getHtmlContainer().querySelector('b');
+                        timerInterval = setInterval(() => {
+                            const progress = document.querySelector(`#progress-${fieldName} .progress-bar`);
+                            if (progress) {
+                                const percent = progress.style.width || '0%';
+                                b.textContent = `Mengunggah ${percent}`;
+                            }
+                        }, 100);
+                    },
+                    willClose: () => {
+                        clearInterval(timerInterval);
+                    }
+                });
+                
+                // Start the upload
+                xhr.send(formData);
+            });
+        });
     });
 </script>
 @endpush

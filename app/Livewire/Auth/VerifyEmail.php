@@ -16,15 +16,37 @@ class VerifyEmail extends Component
      */
     public function sendVerification(): void
     {
-        if (Auth::user()->hasVerifiedEmail()) {
-            $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        try {
+            $user = Auth::user();
+            
+            if ($user->hasVerifiedEmail()) {
+                $this->dispatch('notify', [
+                    'type' => 'info',
+                    'title' => 'Email Sudah Terverifikasi',
+                    'message' => 'Email Anda sudah terverifikasi. Mengalihkan ke dashboard...',
+                    'onConfirmed' => 'redirectToDashboard',
+                    'timer' => 2000
+                ]);
+                return;
+            }
 
-            return;
+            $user->sendEmailVerificationNotification();
+
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'title' => 'Tautan Verifikasi Terkirim',
+                'message' => 'Tautan verifikasi baru telah dikirim ke alamat email Anda. Silakan periksa kotak masuk atau folder spam Anda.',
+                'timer' => 8000
+            ]);
+            
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Terjadi Kesalahan',
+                'message' => 'Gagal mengirim tautan verifikasi. Silakan coba lagi nanti.',
+                'timer' => 5000
+            ]);
         }
-
-        Auth::user()->sendEmailVerificationNotification();
-
-        Session::flash('status', 'verification-link-sent');
     }
 
     /**
@@ -32,8 +54,40 @@ class VerifyEmail extends Component
      */
     public function logout(Logout $logout): void
     {
-        $logout();
-
+        try {
+            $logout();
+            
+            $this->dispatch('notify', [
+                'type' => 'info',
+                'title' => 'Berhasil Keluar',
+                'message' => 'Anda telah berhasil keluar dari akun Anda.',
+                'onConfirmed' => 'redirectToHome',
+                'timer' => 3000
+            ]);
+            
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Terjadi Kesalahan',
+                'message' => 'Gagal untuk keluar. Silakan coba lagi.',
+                'timer' => 5000
+            ]);
+        }
+    }
+        
+    /**
+     * Redirect to dashboard after email is already verified
+     */
+    public function redirectToDashboard()
+    {
+        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+    }
+    
+    /**
+     * Redirect to home page after logout
+     */
+    public function redirectToHome()
+    {
         $this->redirect('/', navigate: true);
     }
 }

@@ -103,6 +103,97 @@
         </div>
     </div>
     
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Global notification handler -->
+    <script>
+        // Handle Livewire flash messages
+        document.addEventListener('livewire:initialized', () => {
+            // Listen for Livewire flash messages
+            Livewire.on('notify', (data) => {
+                const { type, title, message, timer = 3000 } = data;
+                
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: timer,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer);
+                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                    }
+                });
+
+                // For toast notifications, we'll combine title and message for better display
+                const toastTitle = title;
+                const toastHtml = message ? `<div class="text-sm mt-1">${message}</div>` : '';
+                
+                Toast.fire({
+                    icon: type,
+                    title: toastTitle,
+                    html: toastHtml
+                });
+            });
+        });
+
+        // Handle session flash messages
+        @if (session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: '{{ session('success') }}',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        @endif
+
+        @if (session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: '{{ session('error') }}',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 5000,
+                timerProgressBar: true
+            });
+        @endif
+
+        @if (session('info'))
+            Swal.fire({
+                icon: 'info',
+                title: 'Informasi',
+                text: '{{ session('info') }}',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        @endif
+
+        @if ($errors->any())
+            @foreach ($errors->all() as $error)
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error Validasi',
+                    text: '{{ $error }}',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 5000,
+                    timerProgressBar: true
+                });
+            @endforeach
+        @endif
+    </script>
+    
     @stack('modals')
     @livewireScripts
     @stack('scripts')

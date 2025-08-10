@@ -89,30 +89,53 @@ class IrbanManager extends Component
 
     public function store()
     {
-        $this->validate();
-        
-        // Get the pegawai's name
-        $pegawai = Pegawai::findOrFail($this->pegawai_id);
+        try {
+            $this->validate();
+            
+            // Get the pegawai's name
+            $pegawai = Pegawai::findOrFail($this->pegawai_id);
 
+            $userData = [
+                'name' => $pegawai->nama,
+                'email' => $this->email,
+                'role' => $this->role,
+                'pegawai_id' => $this->pegawai_id,
+            ];
 
-        $userData = [
-            'name' => $pegawai->nama,
-            'email' => $this->email,
-            'role' => $this->role,
-            'pegawai_id' => $this->pegawai_id,
-        ];
+            // Only update password if it's provided
+            if (!empty($this->password)) {
+                $userData['password'] = bcrypt($this->password);
+            }
 
-        // Only update password if it's provided
-        if (!empty($this->password)) {
-            $userData['password'] = bcrypt($this->password);
+            $isUpdate = $this->irban_id ? true : false;
+            
+            User::updateOrCreate(['id' => $this->irban_id], $userData);
+
+            $this->dispatch('notify', 
+                type: 'success',
+                title: $isUpdate ? 'Berhasil Memperbarui Data' : 'Berhasil Menambahkan Data',
+                message: $isUpdate ? 'Data Irban berhasil diperbarui.' : 'Data Irban baru berhasil ditambahkan.',
+                timer: 3000
+            );
+
+            $this->closeModal();
+            $this->resetInputFields();
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Validasi Gagal',
+                'message' => 'Terdapat kesalahan pada data yang dimasukkan. Silakan periksa kembali.',
+                'timer' => 5000
+            ]);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Terjadi Kesalahan',
+                'message' => 'Gagal menyimpan data. Silakan coba lagi nanti.',
+                'timer' => 5000
+            ]);
         }
-
-        User::updateOrCreate(['id' => $this->irban_id], $userData);
-
-        session()->flash('message', $this->irban_id ? 'Irban Updated Successfully.' : 'Irban Created Successfully.');
-
-        $this->closeModal();
-        $this->resetInputFields();
     }
 
     public function edit($id)
@@ -129,7 +152,56 @@ class IrbanManager extends Component
 
     public function delete($id)
     {
-        User::find($id)->delete();
-        session()->flash('message', 'Irban Deleted Successfully.');
+        try {
+            $irban = User::findOrFail($id);
+            $irbanName = $irban->name;
+            
+            // Show confirmation dialog first
+            $this->dispatch('show-confirm-dialog', [
+                'title' => 'Hapus Data Irban',
+                'html' => 'Apakah Anda yakin ingin menghapus data Irban <strong>' . e($irbanName) . '</strong>? Tindakan ini tidak dapat dibatalkan!',
+                'confirmButtonText' => 'Ya, Hapus',
+                'confirmButtonColor' => '#ef4444',
+                'cancelButtonText' => 'Batal',
+                'onConfirmed' => 'deleteConfirmed',
+                'itemId' => $id
+            ]);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Terjadi Kesalahan',
+                'message' => 'Gagal mempersiapkan penghapusan data. Silakan coba lagi nanti.',
+                'timer' => 5000
+            ]);
+        }
+    }
+    
+    public function deleteConfirmed($id = null)
+    {
+        try {
+            if (!$id) {
+                throw new \Exception('ID tidak valid');
+            }
+            
+            $irban = User::findOrFail($id);
+            $irbanName = $irban->name;
+            
+            $irban->delete();
+            
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'title' => 'Berhasil Dihapus',
+                'message' => 'Data Irban ' . e($irbanName) . ' berhasil dihapus.',
+                'timer' => 3000
+            ]);
+            
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Gagal Menghapus',
+                'message' => 'Gagal menghapus data Irban. Silakan coba lagi nanti.',
+                'timer' => 5000
+            ]);
+        }
     }
 }

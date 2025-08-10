@@ -26,18 +26,44 @@ class Password extends Component
                 'current_password' => ['required', 'string', 'current_password'],
                 'password' => ['required', 'string', PasswordRule::defaults(), 'confirmed'],
             ]);
-        } catch (ValidationException $e) {
+
+            Auth::user()->update([
+                'password' => Hash::make($validated['password']),
+            ]);
+
             $this->reset('current_password', 'password', 'password_confirmation');
 
-            throw $e;
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'title' => 'Password Diperbarui',
+                'message' => 'Password Anda berhasil diubah.'
+            ]);
+
+            $this->dispatch('password-updated');
+
+        } catch (ValidationException $e) {
+            $errorMessage = 'Password saat ini tidak valid.';
+            
+            if (isset($e->errors()['password'])) {
+                $errorMessage = implode(' ', $e->errors()['password']);
+            }
+            
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Gagal Memperbarui Password',
+                'message' => $errorMessage,
+                'timer' => 5000
+            ]);
+            
+            $this->reset('current_password', 'password', 'password_confirmation');
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Terjadi Kesalahan',
+                'message' => 'Gagal memperbarui password. Silakan coba lagi nanti.'
+            ]);
+            
+            $this->reset('current_password', 'password', 'password_confirmation');
         }
-
-        Auth::user()->update([
-            'password' => Hash::make($validated['password']),
-        ]);
-
-        $this->reset('current_password', 'password', 'password_confirmation');
-
-        $this->dispatch('password-updated');
     }
 }

@@ -28,30 +28,60 @@ class Profile extends Component
      */
     public function updateProfileInformation(): void
     {
-        $user = Auth::user();
+        try {
+            $user = Auth::user();
 
-        $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255'],
+            $validated = $this->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'email' => [
+                    'required',
+                    'string',
+                    'lowercase',
+                    'email',
+                    'max:255',
+                    Rule::unique(User::class)->ignore($user->id),
+                ],
+            ]);
 
-            'email' => [
-                'required',
-                'string',
-                'lowercase',
-                'email',
-                'max:255',
-                Rule::unique(User::class)->ignore($user->id),
-            ],
-        ]);
+            $user->fill($validated);
 
-        $user->fill($validated);
+            $emailWasChanged = $user->isDirty('email');
+            
+            if ($emailWasChanged) {
+                $user->email_verified_at = null;
+            }
 
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
+            $user->save();
+
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'title' => 'Profil Diperbarui',
+                'message' => $emailWasChanged 
+                    ? 'Profil berhasil diperbarui. Silakan periksa email Anda untuk verifikasi alamat email baru.'
+                    : 'Profil berhasil diperbarui.'
+            ]);
+
+            $this->dispatch('profile-updated', name: $user->name);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $errorMessages = [];
+            foreach ($e->errors() as $field => $messages) {
+                $errorMessages[] = implode(' ', $messages);
+            }
+            
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Validasi Gagal',
+                'message' => implode('\n', $errorMessages),
+                'timer' => 5000
+            ]);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Gagal Memperbarui Profil',
+                'message' => 'Terjadi kesalahan saat memperbarui profil. Silakan coba lagi.'
+            ]);
         }
-
-        $user->save();
-
-        $this->dispatch('profile-updated', name: $user->name);
     }
 
     /**
@@ -59,16 +89,28 @@ class Profile extends Component
      */
     public function resendVerificationNotification(): void
     {
-        $user = Auth::user();
+        try {
+            $user = Auth::user();
 
-        if ($user->hasVerifiedEmail()) {
-            $this->redirectIntended(default: route('dashboard', absolute: false));
+            if ($user->hasVerifiedEmail()) {
+                $this->redirectIntended(default: route('dashboard', absolute: false));
+                return;
+            }
 
-            return;
+            $user->sendEmailVerificationNotification();
+
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'title' => 'Email Verifikasi Dikirim',
+                'message' => 'Tautan verifikasi baru telah dikirim ke alamat email Anda.'
+            ]);
+
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Gagal Mengirim Email Verifikasi',
+                'message' => 'Terjadi kesalahan saat mengirim email verifikasi. Silakan coba lagi nanti.'
+            ]);
         }
-
-        $user->sendEmailVerificationNotification();
-
-        Session::flash('status', 'verification-link-sent');
     }
 }

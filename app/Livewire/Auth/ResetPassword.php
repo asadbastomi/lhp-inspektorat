@@ -39,38 +39,83 @@ class ResetPassword extends Component
      */
     public function resetPassword(): void
     {
-        $this->validate([
-            'token' => ['required'],
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-        ]);
+        try {
+            $this->validate([
+                'token' => ['required'],
+                'email' => ['required', 'string', 'email'],
+                'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+            ]);
 
-        // Here we will attempt to reset the user's password. If it is successful we
-        // will update the password on an actual user model and persist it to the
-        // database. Otherwise we will parse the error and return the response.
-        $status = Password::reset(
-            $this->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user) {
-                $user->forceFill([
-                    'password' => Hash::make($this->password),
-                    'remember_token' => Str::random(60),
-                ])->save();
+            // Here we will attempt to reset the user's password. If it is successful we
+            // will update the password on an actual user model and persist it to the
+            // database. Otherwise we will parse the error and return the response.
+            $status = Password::reset(
+                $this->only('email', 'password', 'password_confirmation', 'token'),
+                function ($user) {
+                    $user->forceFill([
+                        'password' => Hash::make($this->password),
+                        'remember_token' => Str::random(60),
+                    ])->save();
 
-                event(new PasswordReset($user));
+                    event(new PasswordReset($user));
+                }
+            );
+
+            // Handle the response status
+            if ($status === Password::PASSWORD_RESET) {
+                $this->dispatch('notify', [
+                    'type' => 'success',
+                    'title' => 'Password Berhasil Diubah',
+                    'message' => 'Password Anda telah berhasil diubah. Anda akan dialihkan ke halaman login.',
+                    'onConfirmed' => 'redirectToLogin',
+                    'timer' => 5000
+                ]);
+                
+                // Clear the form
+                $this->reset(['password', 'password_confirmation']);
+                return;
             }
-        );
-
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
-        if ($status != Password::PasswordReset) {
+            
+            // Handle different error cases
+            $errorMessage = 'Gagal mengatur ulang password. Silakan coba lagi.';
+            
+            if ($status === Password::INVALID_TOKEN) {
+                $errorMessage = 'Token reset password tidak valid atau sudah kadaluarsa. Silakan minta tautan reset password baru.';
+            } elseif ($status === Password::INVALID_USER) {
+                $errorMessage = 'Email tidak terdaftar dalam sistem kami.';
+            }
+            
             $this->addError('email', __($status));
-
-            return;
+            
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Gagal Mengatur Ulang Password',
+                'message' => $errorMessage,
+                'timer' => 8000
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Validasi Gagal',
+                'message' => 'Terdapat kesalahan pada data yang dimasukkan. Silakan periksa kembali form reset password.',
+                'timer' => 5000
+            ]);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'title' => 'Terjadi Kesalahan',
+                'message' => 'Terjadi kesalahan saat mencoba mengatur ulang password. Silakan coba lagi nanti.',
+                'timer' => 5000
+            ]);
         }
-
-        Session::flash('status', __($status));
-
+    }
+    
+    /**
+     * Redirect to login page after successful password reset
+     */
+    public function redirectToLogin()
+    {
         $this->redirectRoute('login', navigate: true);
     }
 }
