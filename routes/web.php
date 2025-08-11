@@ -8,10 +8,13 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UploadController;
 use App\Livewire\LhpDetail;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+// Route::get('/', function () {
+//     return view('welcome');
+// })->name('home');
 
+Route::get('/', function () {
+    return redirect(route('login'));
+});
 Route::get('dashboard', \App\Livewire\Dashboard::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
@@ -20,6 +23,7 @@ Route::middleware(['auth','verified'])->group(function () {
     Route::get('lhp', \App\Livewire\LhpManager::class)->name('lhps');
     Route::get('lhp/{id}', LhpDetail::class)->name('lhp.detail');
     Route::get('irban', \App\Livewire\IrbanManager::class)->name('irbans');
+    Route::get('jabatan', \App\Livewire\JabatanManager::class)->name('jabatan');
     Route::get('tindak-lanjut', \App\Livewire\TindakLanjutManager::class)->name('tindak-lanjut');
     Route::redirect('settings', 'settings/profile');
 

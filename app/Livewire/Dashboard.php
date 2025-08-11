@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Lhp;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
@@ -32,7 +33,6 @@ class Dashboard extends Component
         $this->irbans = User::where('role', 'irban')->orderBy('name')->get();
     }
 
-    // This method re-calculates all data and dispatches an event for the charts
     public function updated($property)
     {
         if (in_array($property, ['selectedIrban', 'selectedYear', 'selectedMonth', 'temuanFilter'])) {
@@ -40,12 +40,10 @@ class Dashboard extends Component
         }
     }
 
-    // Main render method
     public function render()
     {
         $baseQuery = $this->getFilteredLhps();
 
-        // Calculate stats based on cloned queries to prevent modification.
         $stats = [
             'totalLaporan' => (clone $baseQuery)->count(),
             'jumlahTemuan' => (clone $baseQuery)->whereNotNull('temuan')->count(),
@@ -56,7 +54,6 @@ class Dashboard extends Component
             ? round(($stats['penyelesaianSelesai'] / $stats['totalLaporan']) * 100, 1) 
             : 0;
         
-        // Get recent LHP for the table using a cloned query.
         $recentLhps = (clone $baseQuery)->with('user')->latest('tanggal_lhp')->take(5)->get();
 
         return view('livewire.dashboard', [
@@ -68,7 +65,12 @@ class Dashboard extends Component
     private function getFilteredLhps()
     {
         return Lhp::query()
-            ->when($this->selectedIrban !== 'all', function ($query) {
+            // FIX: Automatically scope data for the 'irban' role
+            ->when(Auth::user()->role === 'irban', function ($query) {
+                $query->where('user_id', Auth::id());
+            })
+            // Admin-specific filter
+            ->when(Auth::user()->role === 'admin' && $this->selectedIrban !== 'all', function ($query) {
                 $query->where('user_id', $this->selectedIrban);
             })
             ->when($this->selectedYear, function ($query) {
@@ -94,9 +96,12 @@ class Dashboard extends Component
 
         // 1. Temuan by Irban Chart
         $irbanQuery = User::where('role', 'irban');
-        if ($this->selectedIrban !== 'all') {
+        if (Auth::user()->role === 'admin' && $this->selectedIrban !== 'all') {
             $irbanQuery->where('id', $this->selectedIrban);
+        } elseif (Auth::user()->role === 'irban') {
+            $irbanQuery->where('id', Auth::id());
         }
+        
         $temuanIrbanData = $irbanQuery->withCount(['lhps as temuan_count' => function ($query) {
             $query->whereNotNull('temuan')
                 ->when($this->selectedYear, fn($q) => $q->whereYear('tanggal_lhp', $this->selectedYear))

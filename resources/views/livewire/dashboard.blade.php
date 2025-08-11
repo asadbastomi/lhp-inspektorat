@@ -13,7 +13,11 @@
             <i class="fas fa-filter text-[#0277BD] text-xl mr-3"></i>
             <h3 class="text-lg font-semibold text-[#263238]">Filter Data</h3>
         </div>
+        @if(Auth::user()->role === 'admin')
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        @else
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        @endif
             <div>
                 <label for="temuanFilter" class="block text-sm font-medium text-gray-700 mb-1">Jenis Temuan</label>
                 <select id="temuanFilter" wire:model.live="temuanFilter" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[#1B5E20] focus:border-[#1B5E20]">
@@ -22,6 +26,7 @@
                     <option value="material">Kerugian Material</option>
                 </select>
             </div>
+            @if(Auth::user()->role === 'admin')
             <div>
                 <label for="irbanFilter" class="block text-sm font-medium text-gray-700 mb-1">Irban</label>
                 <select id="irbanFilter" wire:model.live="selectedIrban" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[#1B5E20] focus:border-[#1B5E20]">
@@ -31,6 +36,7 @@
                     @endforeach
                 </select>
             </div>
+            @endif
             <div>
                 <label for="yearFilter" class="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
                 <select id="yearFilter" wire:model.live="selectedYear" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[#1B5E20] focus:border-[#1B5E20]">

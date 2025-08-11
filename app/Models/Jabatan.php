@@ -10,7 +10,7 @@ class Jabatan extends Model
     use HasUuids;
 
     protected $fillable = [
-        'nama'
+        'jabatan'
     ];
 
     public function pegawai()
