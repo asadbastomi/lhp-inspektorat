@@ -1,46 +1,53 @@
-#########################################
-# 1. Build Stage: Bun + PHP vendor
-#########################################
+# ======================================
+# 1️⃣ FRONTEND + COMPOSER BUILD STAGE
+# ======================================
 FROM oven/bun:latest AS build
 WORKDIR /app
 
-# Install PHP CLI and curl for Composer
-RUN apt update && apt install -y php-cli curl unzip git \
-    && rm -rf /var/lib/apt/lists/*
+# Install PHP CLI + required PHP extensions for Composer
+RUN apt-get update && apt-get install -y \
+    php-cli \
+    php-xml \
+    php-mbstring \
+    php-zip \
+    php-curl \
+    unzip \
+    curl \
+    git \
+ && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
+RUN curl -sS https://getcomposer.org/installer \
+    | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Copy composer files first to cache deps
+# Copy PHP dependencies first (composer.*) and install
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --prefer-dist --optimize-autoloader
 
-# Copy Node package files first to cache deps
-COPY package.json pnpm-lock.yaml ./
+# Copy JS dependencies first (package.*) and install
+COPY package.json pnpm-lock.yaml* bun.lockb* ./
 RUN bun install --frozen-lockfile
 
-# Copy the rest of the source code
+# Copy the rest of the app and build frontend
 COPY . .
-
-# Build frontend assets (vendor/livewire/flux/dist/flux.css now exists)
 RUN bun run build
 
+# ======================================
+# 2️⃣ PRODUCTION PHP-FPM STAGE
+# ======================================
+FROM php:8.2-fpm AS app
+WORKDIR /var/www
 
-#########################################
-# 2. Runtime Stage: FrankenPHP
-#########################################
-FROM dunglas/frankenphp
-
-ENV SERVER_NAME="http://"
-
-# Install required system libs
-RUN apt update && apt install -y \
-    curl unzip git libicu-dev libzip-dev libpng-dev libjpeg-dev \
-    libfreetype6-dev libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install PHP extensions
-RUN install-php-extensions \
+# Install system deps and PHP extensions
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libzip-dev \
+    libicu-dev \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+ && docker-php-ext-install \
     gd \
     pcntl \
     opcache \
@@ -49,41 +56,20 @@ RUN install-php-extensions \
     intl \
     zip \
     exif \
-    ftp \
     bcmath \
-    redis
+    dom \
+ && rm -rf /var/lib/apt/lists/*
 
-# PHP settings
-RUN echo "opcache.enable=1" > /usr/local/etc/php/conf.d/custom.ini \
-    && echo "opcache.jit=tracing" >> /usr/local/etc/php/conf.d/custom.ini \
-    && echo "opcache.jit_buffer_size=256M" >> /usr/local/etc/php/conf.d/custom.ini \
-    && echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/custom.ini \
-    && echo "upload_max_filesize=200M" >> /usr/local/etc/php/conf.d/custom.ini \
-    && echo "post_max_size=200M" >> /usr/local/etc/php/conf.d/custom.ini
+# Copy built app from build stage
+COPY --from=build /app /var/www
 
-# Copy Composer from official image
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Set correct permissions
+RUN chown -R www-data:www-data /var/www
 
-WORKDIR /app
+# Increase PHP upload limits
+RUN { \
+    echo "upload_max_filesize=200M"; \
+    echo "post_max_size=200M"; \
+} > /usr/local/etc/php/conf.d/uploads.ini
 
-# Prepare Laravel storage
-RUN mkdir -p /app/storage /app/bootstrap/cache \
-    && chown -R www-data:www-data /app/storage /app/bootstrap/cache \
-    && chmod -R 775 /app/storage /app/bootstrap/cache
-
-# Copy app source code
-COPY . .
-
-# Copy vendor & public/build from build stage
-COPY --from=build /app/vendor /app/vendor
-COPY --from=build /app/public/build /app/public/build
-
-# Install production PHP dependencies
-RUN composer install --prefer-dist --optimize-autoloader --no-interaction
-
-# Enable extensions
-RUN docker-php-ext-enable redis
-
-EXPOSE 80 443
-
-ENTRYPOINT ["php", "artisan", "octane:frankenphp", "--workers=3", "--max-requests=500", "--log-level=debug", "--host=0.0.0.0", "--port=80"]
+CMD ["php-fpm"]
