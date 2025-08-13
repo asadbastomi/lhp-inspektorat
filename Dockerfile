@@ -1,72 +1,83 @@
-# Stage 1: PHP & Composer
-FROM php:8.3-fpm AS php-builder
+# ===============================
+# Stage 1: PHP dependencies
+# ===============================
+FROM dunglas/frankenphp:1-php8.3 AS php-builder
 
-# Install system dependencies & PHP extensions
-RUN apt-get update && apt-get install -y \
-    git unzip libpng-dev libjpeg-dev libfreetype6-dev libonig-dev libxml2-dev zip curl \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
-
-# Set PHP upload limits
-RUN { \
-    echo "upload_max_filesize = 200M"; \
-    echo "post_max_size = 200M"; \
-    echo "memory_limit = 512M"; \
-} > /usr/local/etc/php/conf.d/uploads.ini
-
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Set working directory
 WORKDIR /app
 
-# Copy composer files and install deps
+# Copy composer files first (better caching)
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist
 
-# Copy full Laravel source code AFTER composer deps
+# Install PHP deps (no dev)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+# Copy Laravel app
 COPY . .
 
-# Run artisan optimizations
-RUN php artisan config:clear \
- && php artisan cache:clear \
- && php artisan route:cache \
- && php artisan view:cache
-
-# Stage 2: Node for frontend (pnpm)
-FROM node:20 AS node-builder
+# ===============================
+# Stage 2: Frontend build with Bun
+# ===============================
+FROM oven/bun:1 AS bun-builder
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
-
-# Copy JS deps
+# Copy package files
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
 
-# Copy frontend files and build
-COPY . .
-RUN pnpm run build
+# Install frontend deps
+RUN bun install --frozen-lockfile --ignore-scripts
 
-# Stage 3: Production image
-FROM php:8.3-fpm
+# Copy from php-builder so vendor exists for flux.css import
+COPY --from=php-builder /app ./
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y libpng-dev libjpeg-dev libfreetype6-dev libonig-dev libxml2-dev zip curl \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+# Build frontend
+RUN bun run build
 
-# Copy PHP config
-COPY --from=php-builder /usr/local/etc/php/conf.d/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+# ===============================
+# Stage 3: FrankenPHP final image
+# ===============================
+FROM dunglas/frankenphp:1-php8.3
 
-# Copy Laravel & vendor
+# Install PHP extensions
+RUN apt-get update && apt-get install -y \
+    curl unzip git libicu-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libssl-dev \
+ && install-php-extensions \
+    gd pcntl opcache pdo pdo_mysql intl zip exif ftp bcmath redis \
+ && rm -rf /var/lib/apt/lists/*
+
+# PHP config
+RUN echo "opcache.enable=1" > /usr/local/etc/php/conf.d/custom.ini \
+ && echo "opcache.jit=tracing" >> /usr/local/etc/php/conf.d/custom.ini \
+ && echo "opcache.jit_buffer_size=256M" >> /usr/local/etc/php/conf.d/custom.ini \
+ && echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/custom.ini \
+ && echo "upload_max_filesize=20M" >> /usr/local/etc/php/conf.d/custom.ini \
+ && echo "post_max_size=20M" >> /usr/local/etc/php/conf.d/custom.ini
+
+# Copy Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set working dir
 WORKDIR /app
-COPY --from=php-builder /app /app
+
+# Copy PHP vendor from php-builder
+COPY --from=php-builder /app/vendor ./vendor
+
+# Copy Laravel app (excluding vendor to avoid overwrite)
+COPY . .
 
 # Copy built frontend assets
-COPY --from=node-builder /app/public /app/public
+COPY --from=bun-builder /app/public/build ./public/build
 
-# Environment vars for Nixpacks-style config
-ENV NIXPACKS_PHP_FALLBACK_PATH=/index.php
-ENV NIXPACKS_PHP_ROOT_DIR=/app/public
+# Ensure permissions
+RUN mkdir -p storage bootstrap/cache \
+ && chown -R www-data:www-data storage bootstrap/cache \
+ && chmod -R 775 storage bootstrap/cache
 
-CMD ["php-fpm"]
+# Cache config/routes/views
+RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
+
+# Expose HTTP/HTTPS
+EXPOSE 80 443
+
+# Run FrankenPHP Octane
+ENTRYPOINT ["php", "artisan", "octane:frankenphp", "--workers=3", "--max-requests=500", "--host=0.0.0.0", "--port=80"]
