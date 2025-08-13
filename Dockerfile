@@ -1,53 +1,36 @@
-# Stage 1 — Build assets and vendor
-FROM php:8.2-cli AS build
-WORKDIR /app
+# ---- Base Image ----
+    FROM php:8.3-fpm AS base
 
-# Install PHP extensions required by your packages
-RUN apt-get update && apt-get install -y \
-    git unzip libzip-dev libicu-dev libpng-dev libonig-dev libxml2-dev \
-    && docker-php-ext-install gd pcntl opcache pdo pdo_mysql intl zip exif bcmath dom \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Copy PHP dependency files and install
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --prefer-dist --optimize-autoloader
-
-# Install Bun (for JS build)
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:${PATH}"
-
-# Copy JS dependency files and install
-COPY package.json bun.lockb ./
-RUN bun install --frozen-lockfile
-
-# Copy the rest of the code
-COPY . .
-
-# Build frontend
-RUN bun run build
-
-
-# Stage 2 — Final runtime image
-FROM php:8.2-fpm
-WORKDIR /var/www/html
-
-# Install runtime PHP extensions
-RUN apt-get update && apt-get install -y \
-    libzip-dev libicu-dev libpng-dev libonig-dev libxml2-dev \
-    && docker-php-ext-install gd pcntl opcache pdo pdo_mysql intl zip exif bcmath dom \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy vendor and built assets from build stage
-COPY --from=build /app/vendor ./vendor
-COPY --from=build /app/public/build ./public/build
-COPY --from=build /app ./
-
-# Set PHP upload limit
-RUN echo "upload_max_filesize=200M" > /usr/local/etc/php/conf.d/uploads.ini \
- && echo "post_max_size=200M" >> /usr/local/etc/php/conf.d/uploads.ini
-
-EXPOSE 9000
-CMD ["php-fpm"]
+    # Install PHP extensions and system dependencies
+    RUN apt-get update && apt-get install -y \
+        curl unzip git libicu-dev libzip-dev libpng-dev libjpeg-dev \
+        libfreetype6-dev libssl-dev nodejs npm \
+        && docker-php-ext-configure intl \
+        && docker-php-ext-install intl pdo pdo_mysql zip gd \
+        && apt-get clean && rm -rf /var/lib/apt/lists/*
+    
+    # Install Composer
+    RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
+    
+    # Install PNPM
+    RUN npm install -g pnpm
+    
+    WORKDIR /var/www/html
+    
+    # ---- Dependencies ----
+    COPY composer.json composer.lock ./
+    RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+    
+    COPY package.json pnpm-lock.yaml ./
+    RUN pnpm install --frozen-lockfile
+    
+    # ---- Copy Application ----
+    COPY . .
+    
+    # Set permissions
+    RUN chown -R www-data:www-data storage bootstrap/cache
+    
+    # Laravel optimization
+    RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
+    
+    CMD ["php-fpm"]
