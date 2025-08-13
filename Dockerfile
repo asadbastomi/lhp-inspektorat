@@ -1,83 +1,71 @@
-# ===============================
-# Stage 1: PHP dependencies
-# ===============================
-FROM dunglas/frankenphp:1-php8.3 AS php-builder
-
+FROM oven/bun:latest AS build
 WORKDIR /app
 
-# Copy composer files first (better caching)
-COPY composer.json composer.lock ./
-
-# Install PHP deps (no dev)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress
-
-# Copy Laravel app
-COPY . .
-
-# ===============================
-# Stage 2: Frontend build with Bun
-# ===============================
-FROM oven/bun:1 AS bun-builder
-
-WORKDIR /app
-
-# Copy package files
+# Change bun.lock with package_lock.json/yarn.lock/pnpm-lock.yaml/bun.lockb
 COPY package.json pnpm-lock.yaml ./
 
-# Install frontend deps
+# use ignore-scripts to avoid builting node modules like better-sqlite3
 RUN bun install --frozen-lockfile --ignore-scripts
 
-# Copy from php-builder so vendor exists for flux.css import
-COPY --from=php-builder /app ./
-
-# Build frontend
-RUN bun run build
-
-# ===============================
-# Stage 3: FrankenPHP final image
-# ===============================
-FROM dunglas/frankenphp:1-php8.3
-
-# Install PHP extensions
-RUN apt-get update && apt-get install -y \
-    curl unzip git libicu-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libssl-dev \
- && install-php-extensions \
-    gd pcntl opcache pdo pdo_mysql intl zip exif ftp bcmath redis \
- && rm -rf /var/lib/apt/lists/*
-
-# PHP config
-RUN echo "opcache.enable=1" > /usr/local/etc/php/conf.d/custom.ini \
- && echo "opcache.jit=tracing" >> /usr/local/etc/php/conf.d/custom.ini \
- && echo "opcache.jit_buffer_size=256M" >> /usr/local/etc/php/conf.d/custom.ini \
- && echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/custom.ini \
- && echo "upload_max_filesize=20M" >> /usr/local/etc/php/conf.d/custom.ini \
- && echo "post_max_size=20M" >> /usr/local/etc/php/conf.d/custom.ini
-
-# Copy Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Set working dir
-WORKDIR /app
-
-# Copy PHP vendor from php-builder
-COPY --from=php-builder /app/vendor ./vendor
-
-# Copy Laravel app (excluding vendor to avoid overwrite)
+# Copy the entire project
 COPY . .
 
-# Copy built frontend assets
-COPY --from=bun-builder /app/public/build ./public/build
+RUN bun --bun run build
 
-# Ensure permissions
-RUN mkdir -p storage bootstrap/cache \
- && chown -R www-data:www-data storage bootstrap/cache \
- && chmod -R 775 storage bootstrap/cache
+FROM dunglas/frankenphp
 
-# Cache config/routes/views
-RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
+# Set Caddy server name to "http://" to serve on 80 and not 443
+# Read more: https://frankenphp.dev/docs/config/#environment-variables
+ENV SERVER_NAME="http://"
 
-# Expose HTTP/HTTPS
+RUN apt update && apt install -y \
+    curl unzip git libicu-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libssl-dev
+
+RUN install-php-extensions \
+    gd \
+    pcntl \
+    opcache \
+    pdo \
+    pdo_mysql \
+    intl \
+    zip \
+    exif \
+    ftp \
+    bcmath \
+    redis
+
+# Set php.ini
+RUN echo "opcache.enable=1" > /usr/local/etc/php/conf.d/custom.ini \
+    && echo "opcache.jit=tracing" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "opcache.jit_buffer_size=256M" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "memory_limit=512M" > /usr/local/etc/php/conf.d/custom.ini \
+    && echo "upload_max_filesize=5M" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "post_max_size=5M" >> /usr/local/etc/php/conf.d/custom.ini
+
+# Copy Composer dari official image
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /app
+
+RUN mkdir -p /app/storage /app/bootstrap/cache
+
+RUN chown -R www-data:www-data /app/storage bootstrap/cache && chmod -R 775 /app/storage
+
+COPY . .
+
+# Only `/app/public/build` folder is needed from the build stage
+COPY --from=build /app/public/build /app/public/build
+
+# Install PHP extensions
+# RUN pecl install redis
+
+# Install Laravel dependencies using Composer.
+RUN composer install --prefer-dist --optimize-autoloader --no-interaction
+
+# Enable PHP extensions
+RUN docker-php-ext-enable redis
+
 EXPOSE 80 443
 
-# Run FrankenPHP Octane
-ENTRYPOINT ["php", "artisan", "octane:frankenphp", "--workers=3", "--max-requests=500", "--host=0.0.0.0", "--port=80"]
+ENTRYPOINT ["php", "artisan", "octane:frankenphp", "--workers=3", "--max-requests=500", "--log-level=debug", "--host=0.0.0.0", "--port=80" ]
