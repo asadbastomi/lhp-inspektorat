@@ -1,13 +1,8 @@
-@import 'tailwindcss';
-@import '../../vendor/livewire/flux/dist/flux.css';
+@import "tailwindcss";
 
 @source '../views';
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
-@source '../../vendor/livewire/flux/stubs/**/*.blade.php';
 
 @custom-variant dark (&:where(.dark, .dark *));
-
 
 [data-flux-field]:not(ui-radio, ui-checkbox) {
     display: grid;
@@ -24,7 +19,8 @@ textarea:focus[data-flux-control],
 select:focus[data-flux-control] {
     outline: 2px solid transparent;
     outline-offset: 2px;
-    box-shadow: 0 0 0 2px var(--color-accent-foreground), 0 0 0 4px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent-foreground),
+        0 0 0 4px var(--color-accent);
 }
 
 /* \[:where(&)\]:size-4 {
