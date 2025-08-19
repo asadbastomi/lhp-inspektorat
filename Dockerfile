@@ -66,6 +66,6 @@ RUN composer install --prefer-dist --optimize-autoloader --no-interaction
 # Enable PHP extensions
 RUN docker-php-ext-enable redis
 
-EXPOSE 80 443`
+EXPOSE 80 443
 
 ENTRYPOINT ["php", "artisan", "octane:frankenphp", "--workers=3", "--max-requests=500", "--log-level=debug", "--host=0.0.0.0", "--port=80" ]
