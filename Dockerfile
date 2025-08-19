@@ -39,8 +39,8 @@ RUN echo "opcache.enable=1" > /usr/local/etc/php/conf.d/custom.ini \
     && echo "opcache.jit=tracing" >> /usr/local/etc/php/conf.d/custom.ini \
     && echo "opcache.jit_buffer_size=256M" >> /usr/local/etc/php/conf.d/custom.ini \
     && echo "memory_limit=512M" > /usr/local/etc/php/conf.d/custom.ini \
-    && echo "upload_max_filesize=5M" >> /usr/local/etc/php/conf.d/custom.ini \
-    && echo "post_max_size=5M" >> /usr/local/etc/php/conf.d/custom.ini
+    && echo "upload_max_filesize=200M" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "post_max_size=210M" >> /usr/local/etc/php/conf.d/custom.ini
 
 # Copy Composer dari official image
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -66,6 +66,6 @@ RUN composer install --prefer-dist --optimize-autoloader --no-interaction
 # Enable PHP extensions
 RUN docker-php-ext-enable redis
 
-EXPOSE 80 443
+EXPOSE 80 443`
 
 ENTRYPOINT ["php", "artisan", "octane:frankenphp", "--workers=3", "--max-requests=500", "--log-level=debug", "--host=0.0.0.0", "--port=80" ]
