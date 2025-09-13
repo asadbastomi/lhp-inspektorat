@@ -17,7 +17,7 @@ class UploadController extends Controller
         ini_set('memory_limit', '512M');
         $this->middleware(['auth']);
     }
-    
+
     public function livewireUpload(Request $request)
     {
         Log::info('Upload request received', $request->except('file'));
@@ -25,25 +25,39 @@ class UploadController extends Controller
         try {
             $request->validate([
                 'file' => 'required|file|max:204800', // 200MB
-                'lhp_id' => 'required|exists:lhps,id',
                 'field_name' => 'required|string',
             ]);
 
             $file = $request->file('file');
-            $lhpId = $request->input('lhp_id');
             $fieldName = $request->input('field_name');
 
             if ($fieldName === 'tindak_lanjut') {
-                return $this->handleTindakLanjutUpload($request, $file, $lhpId);
+                $request->validate([
+                    'rekomendasi_id' => 'required|exists:rekomendasis,id',
+                ]);
+                return $this->handleTindakLanjutUpload($request, $file);
             }
 
-            $allowedDokumenFields = ['file_surat_tugas', 'file_lhp', 'file_kertas_kerja', 'file_review_sheet', 'file_nota_dinas'];
-            if (in_array($fieldName, $allowedDokumenFields)) {
-                return $this->handleDokumenUpload($request, $file, $lhpId, $fieldName);
+            $request->validate([
+                'lhp_id' => 'required|exists:lhps,id',
+            ]);
+            $lhpId = $request->input('lhp_id');
+
+            // Validate the field name to prevent arbitrary updates
+            $allowedFields = [
+                'file_surat_tugas',
+                'file_lhp',
+                'file_kertas_kerja',
+                'file_review_sheet',
+                'file_nota_dinas',
+                'file_p2hp',
+            ];
+
+            if (!in_array($fieldName, $allowedFields)) {
+                throw new \Exception('Invalid field name provided.');
             }
 
-            throw new \Exception('Invalid field name provided.');
-
+            return $this->handleDokumenUpload($request, $file, $lhpId, $fieldName);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'message' => 'Validasi gagal: ' . collect($e->errors())->flatten()->first()], 422);
         } catch (\Exception $e) {
@@ -56,7 +70,7 @@ class UploadController extends Controller
     {
         $request->validate(['file' => 'mimes:pdf']);
         $lhp = Lhp::findOrFail($lhpId);
-        
+
         if ($lhp->$fieldName && Storage::disk('public')->exists($lhp->$fieldName)) {
             Storage::disk('public')->delete($lhp->$fieldName);
         }
@@ -71,15 +85,16 @@ class UploadController extends Controller
     /**
      * FIX: This method now handles both creating and updating Tindak Lanjut records.
      */
-    private function handleTindakLanjutUpload(Request $request, $file, $lhpId)
+    private function handleTindakLanjutUpload(Request $request, $file)
     {
+        $rekomendasiId = $request->input('rekomendasi_id');
         $description = $request->input('description');
         $tindakLanjutId = $request->input('tindak_lanjut_id'); // Get the ID for editing
 
         $path = $file->store('tindak-lanjut', 'public');
 
         $data = [
-            'lhp_id' => $lhpId,
+            'rekomendasi_id' => $rekomendasiId,
             'description' => $description,
             'file_name' => $file->getClientOriginalName(),
             'file_path' => $path,
@@ -101,7 +116,7 @@ class UploadController extends Controller
             // Create new record
             $data['id'] = Str::uuid();
             TindakLanjut::create($data);
-            Log::info('Tindak Lanjut created successfully', ['lhp_id' => $lhpId]);
+            Log::info('Tindak Lanjut created successfully', ['rekomendasi_id' => $rekomendasiId]);
         }
 
         return response()->json(['success' => true, 'message' => 'Tindak Lanjut berhasil disimpan.']);

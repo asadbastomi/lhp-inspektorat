@@ -44,8 +44,8 @@ class JabatanManager extends Component
     public function render()
     {
         $query = Jabatan::when($this->search, function ($q) {
-                $q->where('jabatan', 'like', '%' . $this->search . '%');
-            });
+            $q->where('jabatan', 'like', '%' . $this->search . '%');
+        });
 
         $jabatans = $query->orderBy($this->sortField, $this->sortDirection)->paginate(10);
 
@@ -84,14 +84,14 @@ class JabatanManager extends Component
 
         Jabatan::updateOrCreate(['id' => $this->jabatan_id], $userData);
 
-        $this->dispatch('notify', ['type' => 'success', 'message' => $this->jabatan_id ? 'Data Jabatan berhasil diperbarui.' : 'Jabatan baru berhasil ditambahkan.']);
+        $this->dispatch('notify', type: 'success', message: $this->jabatan_id ? 'Data Jabatan berhasil diperbarui.' : 'Jabatan baru berhasil ditambahkan.');
         $this->closeModal();
     }
 
     public function delete($id)
     {
         Jabatan::find($id)->delete();
-        $this->dispatch('notify', ['type' => 'success', 'message' => 'Data Jabatan berhasil dihapus.']);
+        $this->dispatch('notify', type: 'success', message: 'Data Jabatan berhasil dihapus.');
     }
 
     public function closeModal()

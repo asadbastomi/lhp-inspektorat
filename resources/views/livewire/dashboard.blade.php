@@ -1,258 +1,471 @@
-<div class="container mx-auto px-4 py-8">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
-        <div>
-            <h1 class="text-3xl font-bold text-[#263238]">Dashboard Analitik</h1>
-            <p class="text-gray-600 mt-1">Ringkasan data LHP secara real-time.</p>
+<div x-data="{}" x-init="$nextTick(() => {
+    const cards = document.querySelectorAll('.stats-card');
+    cards.forEach((card, index) => {
+        card.style.setProperty('--delay', `${index * 150}ms`);
+        card.classList.add('animate-slide-up');
+    });
+})">
+    <!-- Hero Section -->
+    <div
+        class="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-3xl shadow-2xl overflow-hidden mb-8">
+        <div class="absolute inset-0 bg-black/20"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/50 to-transparent"></div>
+        <div class="relative px-8 py-12 md:px-12 md:py-16">
+            <div class="flex flex-col lg:flex-row items-center justify-between">
+                <div class="lg:w-2/3 text-white mb-8 lg:mb-0">
+                    <div class="inline-flex items-center bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-4">
+                        <i class="fas fa-chart-line text-white mr-2"></i>
+                        <span class="text-sm font-medium">Dasbor Inspektorat</span>
+                    </div>
+                    <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                        Selamat Datang,
+                        <span class="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
+                            {{ Auth::user()->name }}
+                        </span>
+                    </h1>
+                    <p class="text-xl text-blue-100 leading-relaxed">
+                        Pantau dan kelola Laporan Hasil Pemeriksaan (LHP) dengan mudah melalui dasbor yang komprehensif
+                        ini.
+                    </p>
+                </div>
+                <div class="lg:w-1/3 flex justify-center">
+                    <div class="relative">
+                        <div
+                            class="w-48 h-48 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                            <i class="fas fa-chart-pie text-white text-6xl"></i>
+                        </div>
+                        <div
+                            class="absolute -top-4 -right-4 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center">
+                            <i class="fas fa-star text-yellow-800"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Filters Section -->
-    <div class="card mb-8">
-        <div class="flex items-center mb-4">
-            <i class="fas fa-filter text-[#0277BD] text-xl mr-3"></i>
-            <h3 class="text-lg font-semibold text-[#263238]">Filter Data</h3>
-        </div>
-        @if(Auth::user()->role === 'admin')
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        @else
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        @endif
+    <!-- Filter Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-8">
+        <div class="flex items-center mb-6">
+            <div
+                class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mr-4">
+                <i class="fas fa-filter text-white"></i>
+            </div>
             <div>
-                <label for="temuanFilter" class="block text-sm font-medium text-gray-700 mb-1">Jenis Temuan</label>
-                <select id="temuanFilter" wire:model.live="temuanFilter" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[#1B5E20] focus:border-[#1B5E20]">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Filter Data</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Sesuaikan tampilan data sesuai kebutuhan</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Jenis Temuan</label>
+                <select wire:model.live="temuanFilter"
+                    class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
                     <option value="all">Semua Jenis Temuan</option>
                     <option value="administratif">Temuan Administratif</option>
                     <option value="material">Kerugian Material</option>
                 </select>
             </div>
-            @if(Auth::user()->role === 'admin')
+
+            @if (Auth::user()->role === 'admin')
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Irban</label>
+                    <select wire:model.live="selectedIrban"
+                        class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                        <option value="">Semua Irban</option>
+                        @foreach ($irbans as $irban)
+                            <option value="{{ $irban->id }}">{{ $irban->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+
             <div>
-                <label for="irbanFilter" class="block text-sm font-medium text-gray-700 mb-1">Irban</label>
-                <select id="irbanFilter" wire:model.live="selectedIrban" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[#1B5E20] focus:border-[#1B5E20]">
-                    <option value="all">Semua Irban</option>
-                    @foreach($irbans as $irban)
-                        <option value="{{ $irban->id }}">{{ $irban->name }}</option>
-                    @endforeach
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bulan</label>
+                <select wire:model.live="selectedMonth"
+                    class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                    <option value="all">Semua Bulan</option>
+                    @for ($i = 1; $i <= 12; $i++)
+                        <option value="{{ $i }}">
+                            {{ \Carbon\Carbon::create()->month($i)->translatedFormat('F') }}</option>
+                    @endfor
                 </select>
             </div>
-            @endif
+
             <div>
-                <label for="yearFilter" class="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
-                <select id="yearFilter" wire:model.live="selectedYear" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[#1B5E20] focus:border-[#1B5E20]">
-                    @foreach($years as $year)
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tahun</label>
+                <select wire:model.live="selectedYear"
+                    class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                    @foreach (range(date('Y'), 2020) as $year)
                         <option value="{{ $year }}">{{ $year }}</option>
                     @endforeach
                 </select>
             </div>
-            <div>
-                <label for="monthFilter" class="block text-sm font-medium text-gray-700 mb-1">Bulan</label>
-                <select id="monthFilter" wire:model.live="selectedMonth" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-[#1B5E20] focus:border-[#1B5E20]">
-                    <option value="all">Semua Bulan</option>
-                    @foreach(range(1, 12) as $month)
-                        <option value="{{ $month }}">{{ \Carbon\Carbon::create()->month($month)->translatedFormat('F') }}</option>
-                    @endforeach
-                </select>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div
+            class="stats-card bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-blue-100 text-sm font-medium">Total LHP</p>
+                    <p class="text-3xl font-bold mt-1">{{ number_format($stats['totalLaporan']) }}</p>
+                    <p class="text-blue-200 text-xs mt-2">Laporan keseluruhan</p>
+                </div>
+                <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-file-alt text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div
+            class="stats-card bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-green-100 text-sm font-medium">LHP dengan Temuan</p>
+                    <p class="text-3xl font-bold mt-1">{{ number_format($stats['jumlahTemuan']) }}</p>
+                    <p class="text-green-200 text-xs mt-2">Ada temuan audit</p>
+                </div>
+                <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-search text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div
+            class="stats-card bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-red-100 text-sm font-medium">Total Kerugian</p>
+                    <p class="text-2xl font-bold mt-1">Rp {{ number_format($stats['totalKerugian'], 0, ',', '.') }}</p>
+                    <p class="text-red-200 text-xs mt-2">Kerugian material</p>
+                </div>
+                <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div
+            class="stats-card bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-purple-100 text-sm font-medium">Selesai</p>
+                    <p class="text-3xl font-bold mt-1">{{ number_format($stats['penyelesaianSelesai']) }}</p>
+                    <p class="text-purple-200 text-xs mt-2">Tindak lanjut selesai</p>
+                </div>
+                <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-check-circle text-2xl"></i>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Main Content Area with Loading State -->
-    <div wire:loading.class.delay="opacity-50 transition-opacity" class="transition-opacity">
-        <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            @php
-                $statCards = [
-                    ['title' => 'Total Laporan', 'value' => $stats['totalLaporan'], 'icon' => 'fa-file-alt', 'color' => 'blue'],
-                    ['title' => 'Jumlah Temuan', 'value' => $stats['jumlahTemuan'], 'icon' => 'fa-search', 'color' => 'yellow'],
-                    ['title' => 'Total Kerugian', 'value' => 'Rp ' . number_format($stats['totalKerugian'], 0, ',', '.'), 'icon' => 'fa-money-bill-wave', 'color' => 'red'],
-                    ['title' => '% Penyelesaian', 'value' => $stats['persentasePenyelesaian'] . '%', 'icon' => 'fa-check-circle', 'color' => 'green'],
-                ];
-            @endphp
-            @foreach($statCards as $card)
-            <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-l-4 border-{{$card['color']}}-400">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">{{ $card['title'] }}</h3>
-                        <p class="text-3xl font-bold text-[#263238] mt-2">{{ $card['value'] }}</p>
-                    </div>
-                    <div class="bg-{{$card['color']}}-100 p-3 rounded-full">
-                        <i class="fas {{ $card['icon'] }} text-{{$card['color']}}-600 text-xl"></i>
-                    </div>
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Temuan per Irban Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Temuan per Irban</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Distribusi temuan berdasarkan unit</p>
+                </div>
+                <div
+                    class="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-chart-bar text-white"></i>
                 </div>
             </div>
-            @endforeach
+            <div id="temuanIrbanChart" class="h-80"></div>
         </div>
 
-        <!-- Charts Section with ApexCharts -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" 
-             x-data="dashboardCharts()" 
-             x-init="$nextTick(() => initCharts({{ json_encode($this->getChartData()) }}))"
-             wire:ignore>
-            <!-- Temuan per Irban -->
-            <div class="card lg:col-span-2">
-                <h3 class="text-lg font-semibold text-[#263238] mb-4">Temuan per Irban</h3>
-                <div id="temuanIrbanChart" class="h-80"></div>
+        <!-- Kerugian Bulanan Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Kerugian Bulanan</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Tren kerugian sepanjang tahun</p>
+                </div>
+                <div
+                    class="w-10 h-10 bg-gradient-to-br from-teal-500 to-blue-500 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-chart-line text-white"></i>
+                </div>
             </div>
-            <!-- Status Penyelesaian -->
-            <div class="card">
-                <h3 class="text-lg font-semibold text-[#263238] mb-4">Status Penyelesaian</h3>
-                <div id="statusPenyelesaianChart" class="h-80"></div>
-            </div>
-            <!-- Kerugian per Bulan -->
-            <div class="card lg:col-span-3">
-                <h3 class="text-lg font-semibold text-[#263238] mb-4">Kerugian per Bulan ({{ $selectedYear }})</h3>
-                <div id="kerugianBulananChart" class="h-80"></div>
+            <div id="kerugianBulananChart" class="h-80"></div>
+        </div>
+    </div>
+
+    <!-- Recent LHP Table -->
+    <div
+        class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">LHP Terbaru</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">5 laporan terakhir yang dibuat</p>
+                </div>
+                <a href="{{ route('lhps') }}"
+                    class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors duration-200">
+                    <i class="fas fa-eye mr-2"></i>
+                    Lihat Semua
+                </a>
             </div>
         </div>
 
-        <!-- Recent LHP Table -->
-        <div class="card">
-            <h3 class="text-lg font-semibold text-[#263238] mb-4">Laporan Terbaru</h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full">
-                    <thead>
-                        <tr class="border-b">
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nomor LHP</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Irban</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kerugian</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white">
-                        @forelse($recentLhps as $lhp)
-                        <tr class="border-b hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#263238]">{{ $lhp->nomor_lhp }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $lhp->user->name ?? 'N/A' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span @class([
-                                    'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full',
-                                    'bg-green-100 text-[#1B5E20]' => $lhp->status_penyelesaian == 'selesai',
-                                    'bg-[#FBC02D]/20 text-[#263238]' => $lhp->status_penyelesaian == 'dalam_proses',
-                                    'bg-red-100 text-[#C62828]' => $lhp->status_penyelesaian == 'belum_diproses',
-                                ])>
-                                    {{ Str::title(str_replace('_', ' ', $lhp->status_penyelesaian)) }}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th
+                            class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Nomor LHP
+                        </th>
+                        <th
+                            class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Tanggal
+                        </th>
+                        <th
+                            class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Irban
+                        </th>
+                        <th
+                            class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th
+                            class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Temuan
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    @forelse ($recentLhps as $lhp)
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center">
+                                    <div
+                                        class="w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center mr-3">
+                                        <i class="fas fa-file-alt text-blue-600 dark:text-blue-400 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                            {{ $lhp->nomor_lhp }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                {{ $lhp->tanggal_lhp->translatedFormat('d M Y') }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                {{ $lhp->user->name }}
+                            </td>
+                            <td class="px-6 py-4">
+                                @php
+                                    $statusConfig = [
+                                        'belum_ditindaklanjuti' => [
+                                            'bg' => 'bg-red-100 text-red-800',
+                                            'text' => 'Belum Ditindaklanjuti',
+                                        ],
+                                        'dalam_proses' => [
+                                            'bg' => 'bg-yellow-100 text-yellow-800',
+                                            'text' => 'Dalam Proses',
+                                        ],
+                                        'sesuai' => ['bg' => 'bg-green-100 text-green-800', 'text' => 'Sesuai'],
+                                    ];
+                                    $config = $statusConfig[$lhp->status_penyelesaian] ?? [
+                                        'bg' => 'bg-gray-100 text-gray-800',
+                                        'text' => 'Unknown',
+                                    ];
+                                @endphp
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $config['bg'] }}">
+                                    {{ $config['text'] }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp {{ number_format($lhp->besaran_temuan, 0, ',', '.') }}</td>
-                        </tr>
-                        @empty
-                        <tr class="border-b">
-                            <td colspan="4" class="px-6 py-12 text-center text-sm text-gray-500">
-                                Tidak ada laporan terbaru yang cocok dengan filter Anda.
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                {{ $lhp->temuans->count() }} temuan
                             </td>
                         </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-inbox text-4xl mb-4"></i>
+                                <p>Belum ada LHP yang dibuat</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-@push('scripts')
-<!-- ApexCharts CDN -->
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-<script>
-    function dashboardCharts() {
-        return {
-            temuanIrbanChart: null,
-            statusPenyelesaianChart: null,
-            kerugianBulananChart: null,
+@push('styles')
+    <style>
+        .stats-card {
+            opacity: 0;
+            transform: translateY(20px);
+        }
 
-            initCharts(chartData) {
-                const chartColors = {
-                    primary: '#1B5E20',
-                    primaryLight: '#388E3C',
-                    secondary: '#FBC02D',
-                    accent: '#0277BD',
-                    danger: '#C62828',
-                };
-                
-                // 1. Temuan per Irban (Horizontal Bar Chart)
-                const temuanOptions = {
-                    series: [{ data: chartData.temuanIrban.data }],
-                    chart: { type: 'bar', height: '100%', toolbar: { show: false } },
-                    plotOptions: { bar: { borderRadius: 4, horizontal: true } },
-                    dataLabels: { enabled: false },
-                    xaxis: { categories: chartData.temuanIrban.labels },
-                    colors: [chartColors.primaryLight],
-                };
-                this.temuanIrbanChart = new ApexCharts(document.querySelector("#temuanIrbanChart"), temuanOptions);
-                this.temuanIrbanChart.render();
+        .animate-slide-up {
+            animation: slideUp 0.6s ease-out forwards;
+            animation-delay: var(--delay, 0ms);
+        }
 
-                // 2. Status Penyelesaian (Radial Bar Chart)
-                const statusData = chartData.statusPenyelesaian;
-                const totalStatus = statusData.selesai + statusData.dalam_proses + statusData.belum_diproses;
-                
-                // FIX: The series data must be a simple array of numbers for radialBar.
-                const statusSeriesData = totalStatus > 0 ? [
-                    parseFloat(((statusData.selesai / totalStatus) * 100).toFixed(1)),
-                    parseFloat(((statusData.dalam_proses / totalStatus) * 100).toFixed(1)),
-                    parseFloat(((statusData.belum_diproses / totalStatus) * 100).toFixed(1))
-                ] : [0, 0, 0];
-
-                const statusOptions = {
-                    series: statusSeriesData,
-                    chart: { type: 'radialBar', height: '100%' },
-                    plotOptions: {
-                        radialBar: {
-                            offsetY: 0,
-                            startAngle: 0,
-                            endAngle: 270,
-                            hollow: { margin: 5, size: '30%', background: 'transparent' },
-                            dataLabels: { name: { show: false }, value: { show: false } }
-                        }
-                    },
-                    colors: [chartColors.primary, chartColors.secondary, chartColors.danger],
-                    labels: ['Selesai', 'Dalam Proses', 'Belum Diproses'],
-                    legend: { show: true, floating: true, fontSize: '14px', position: 'left', offsetX: 50, offsetY: 10, labels: { useSeriesColors: true }, markers: { size: 0 }, formatter: (seriesName, opts) => seriesName + ":  " + opts.w.globals.series[opts.seriesIndex] + "%", itemMargin: { vertical: 3 } }
-                };
-                this.statusPenyelesaianChart = new ApexCharts(document.querySelector("#statusPenyelesaianChart"), statusOptions);
-                this.statusPenyelesaianChart.render();
-
-                // 3. Kerugian per Bulan (Area Chart)
-                const kerugianOptions = {
-                    series: [{ name: 'Total Kerugian', data: chartData.kerugianBulanan }],
-                    chart: { type: 'area', height: '100%', toolbar: { show: false }, zoom: { enabled: false } },
-                    dataLabels: { enabled: false },
-                    stroke: { curve: 'smooth', width: 2 },
-                    colors: [chartColors.accent],
-                    fill: { type: 'gradient', gradient: { opacityFrom: 0.6, opacityTo: 0.05 } },
-                    xaxis: { categories: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'] },
-                    yaxis: { labels: { formatter: (value) => 'Rp ' + new Intl.NumberFormat('id-ID').format(value) } },
-                    tooltip: { y: { formatter: (value) => 'Rp ' + new Intl.NumberFormat('id-ID').format(value) } }
-                };
-                this.kerugianBulananChart = new ApexCharts(document.querySelector("#kerugianBulananChart"), kerugianOptions);
-                this.kerugianBulananChart.render();
-
-                // Listen for Livewire updates
-                Livewire.on('updateCharts', (event) => {
-                    this.updateAllCharts(event[0]);
-                });
-            },
-
-            updateAllCharts(chartData) {
-                // Update Temuan Chart
-                this.temuanIrbanChart.updateOptions({
-                    series: [{ data: chartData.temuanIrban.data }],
-                    xaxis: { categories: chartData.temuanIrban.labels }
-                });
-                
-                // Update Status Chart
-                const statusData = chartData.statusPenyelesaian;
-                const totalStatus = statusData.selesai + statusData.dalam_proses + statusData.belum_diproses;
-                const seriesData = totalStatus > 0 ? [
-                    parseFloat(((statusData.selesai / totalStatus) * 100).toFixed(1)),
-                    parseFloat(((statusData.dalam_proses / totalStatus) * 100).toFixed(1)),
-                    parseFloat(((statusData.belum_diproses / totalStatus) * 100).toFixed(1))
-                ] : [0, 0, 0];
-                this.statusPenyelesaianChart.updateSeries(seriesData);
-
-                // Update Kerugian Chart
-                this.kerugianBulananChart.updateSeries([{ data: chartData.kerugianBulanan }]);
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
             }
         }
-    }
-</script>
+    </style>
+@endpush
+
+@push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            @this.on('chartDataUpdated', (data) => {
+                renderCharts(data);
+            });
+
+            // Initial chart render
+            renderCharts(@json($this->getChartData()));
+
+            function renderCharts(data) {
+                // Temuan per Irban Chart
+                const temuanIrbanOptions = {
+                    series: [{
+                        name: 'Jumlah Temuan',
+                        data: data.temuanIrbanData.map(item => item.temuan_count)
+                    }],
+                    chart: {
+                        type: 'bar',
+                        height: 320,
+                        toolbar: {
+                            show: false
+                        }
+                    },
+                    colors: ['#3B82F6'],
+                    plotOptions: {
+                        bar: {
+                            borderRadius: 8,
+                            horizontal: false,
+                            columnWidth: '60%',
+                        }
+                    },
+                    dataLabels: {
+                        enabled: false
+                    },
+                    stroke: {
+                        show: true,
+                        width: 2,
+                        colors: ['transparent']
+                    },
+                    xaxis: {
+                        categories: data.temuanIrbanData.map(item => item.name),
+                        labels: {
+                            style: {
+                                fontSize: '12px'
+                            }
+                        }
+                    },
+                    yaxis: {
+                        title: {
+                            text: 'Jumlah Temuan'
+                        }
+                    },
+                    fill: {
+                        opacity: 1
+                    },
+                    tooltip: {
+                        y: {
+                            formatter: function(val) {
+                                return val + " temuan"
+                            }
+                        }
+                    },
+                    grid: {
+                        strokeDashArray: 3
+                    }
+                };
+
+                if (document.getElementById('temuanIrbanChart')) {
+                    const temuanChart = new ApexCharts(document.querySelector("#temuanIrbanChart"),
+                        temuanIrbanOptions);
+                    temuanChart.render();
+                }
+
+                // Kerugian Bulanan Chart
+                const kerugianBulananOptions = {
+                    series: [{
+                        name: 'Kerugian (Rp)',
+                        data: Object.values(data.kerugianBulananData)
+                    }],
+                    chart: {
+                        type: 'area',
+                        height: 320,
+                        toolbar: {
+                            show: false
+                        }
+                    },
+                    colors: ['#10B981'],
+                    fill: {
+                        type: 'gradient',
+                        gradient: {
+                            shadeIntensity: 1,
+                            opacityFrom: 0.7,
+                            opacityTo: 0.1,
+                        }
+                    },
+                    dataLabels: {
+                        enabled: false
+                    },
+                    stroke: {
+                        curve: 'smooth',
+                        width: 3
+                    },
+                    xaxis: {
+                        categories: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt',
+                            'Nov', 'Des'
+                        ],
+                        labels: {
+                            style: {
+                                fontSize: '12px'
+                            }
+                        }
+                    },
+                    yaxis: {
+                        title: {
+                            text: 'Kerugian (Rp)'
+                        },
+                        labels: {
+                            formatter: function(val) {
+                                return 'Rp ' + new Intl.NumberFormat('id-ID').format(val);
+                            }
+                        }
+                    },
+                    tooltip: {
+                        y: {
+                            formatter: function(val) {
+                                return 'Rp ' + new Intl.NumberFormat('id-ID').format(val);
+                            }
+                        }
+                    },
+                    grid: {
+                        strokeDashArray: 3
+                    }
+                };
+
+                if (document.getElementById('kerugianBulananChart')) {
+                    const kerugianChart = new ApexCharts(document.querySelector("#kerugianBulananChart"),
+                        kerugianBulananOptions);
+                    kerugianChart.render();
+                }
+            }
+        });
+    </script>
 @endpush

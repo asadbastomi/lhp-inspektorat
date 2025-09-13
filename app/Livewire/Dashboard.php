@@ -3,7 +3,10 @@
 namespace App\Livewire;
 
 use App\Models\Lhp;
+use App\Models\Rekomendasi;
+use App\Models\Temuan;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -18,6 +21,7 @@ class Dashboard extends Component
 
     // Data Properties
     public $years = [];
+    /** @var Collection */
     public $irbans = [];
 
     // Lifecycle Hook
@@ -27,7 +31,7 @@ class Dashboard extends Component
             ->distinct()
             ->orderBy('year', 'desc')
             ->pluck('year');
-        
+
         $this->selectedYear = $this->years->first() ?? now()->year;
 
         $this->irbans = User::where('role', 'irban')->orderBy('name')->get();
@@ -44,16 +48,22 @@ class Dashboard extends Component
     {
         $baseQuery = $this->getFilteredLhps();
 
+        $lhpIds = (clone $baseQuery)->pluck('id');
+
+        $totalKerugian = Rekomendasi::whereHas('temuan', function ($query) use ($lhpIds) {
+            $query->whereIn('lhp_id', $lhpIds);
+        })->sum('besaran_temuan');
+
         $stats = [
             'totalLaporan' => (clone $baseQuery)->count(),
-            'jumlahTemuan' => (clone $baseQuery)->whereNotNull('temuan')->count(),
-            'totalKerugian' => (clone $baseQuery)->sum('besaran_temuan'),
+            'jumlahTemuan' => (clone $baseQuery)->whereHas('temuans')->count(),
+            'totalKerugian' => $totalKerugian,
             'penyelesaianSelesai' => (clone $baseQuery)->where('status_penyelesaian', 'selesai')->count(),
         ];
-        $stats['persentasePenyelesaian'] = $stats['totalLaporan'] > 0 
-            ? round(($stats['penyelesaianSelesai'] / $stats['totalLaporan']) * 100, 1) 
+        $stats['persentasePenyelesaian'] = $stats['totalLaporan'] > 0
+            ? round(($stats['penyelesaianSelesai'] / $stats['totalLaporan']) * 100, 1)
             : 0;
-        
+
         $recentLhps = (clone $baseQuery)->with('user')->latest('tanggal_lhp')->take(5)->get();
 
         return view('livewire.dashboard', [
@@ -82,10 +92,14 @@ class Dashboard extends Component
             ->when($this->temuanFilter !== 'all', function ($query) {
                 if ($this->temuanFilter === 'administratif') {
                     $query->where(function ($q) {
-                        $q->whereNull('besaran_temuan')->orWhere('besaran_temuan', '=', 0);
+                        $q->whereDoesntHave('temuans.rekomendasis', function ($rekomendasiQuery) {
+                            $rekomendasiQuery->where('besaran_temuan', '>', 0);
+                        })->orWhereDoesntHave('temuans');
                     });
                 } elseif ($this->temuanFilter === 'material') {
-                    $query->where('besaran_temuan', '>', 0);
+                    $query->whereHas('temuans.rekomendasis', function ($rekomendasiQuery) {
+                        $rekomendasiQuery->where('besaran_temuan', '>', 0);
+                    });
                 }
             });
     }
@@ -101,25 +115,38 @@ class Dashboard extends Component
         } elseif (Auth::user()->role === 'irban') {
             $irbanQuery->where('id', Auth::id());
         }
-        
+
         $temuanIrbanData = $irbanQuery->withCount(['lhps as temuan_count' => function ($query) {
-            $query->whereNotNull('temuan')
+            $query->whereHas('temuans')
                 ->when($this->selectedYear, fn($q) => $q->whereYear('tanggal_lhp', $this->selectedYear))
                 ->when($this->selectedMonth !== 'all', fn($q) => $q->whereMonth('tanggal_lhp', $this->selectedMonth))
                 ->when($this->temuanFilter !== 'all', function ($q) {
                     if ($this->temuanFilter === 'administratif') {
-                        $q->where(fn($sq) => $sq->whereNull('besaran_temuan')->orWhere('besaran_temuan', 0));
+                        $q->where(function ($sq) {
+                            $sq->whereDoesntHave('temuans.rekomendasis', function ($rekomendasiQuery) {
+                                $rekomendasiQuery->where('besaran_temuan', '>', 0);
+                            })->orWhereDoesntHave('temuans');
+                        });
                     } elseif ($this->temuanFilter === 'material') {
-                        $q->where('besaran_temuan', '>', 0);
+                        $q->whereHas('temuans.rekomendasis', function ($rekomendasiQuery) {
+                            $rekomendasiQuery->where('besaran_temuan', '>', 0);
+                        });
                     }
                 });
         }])->get();
 
         // 2. Kerugian by Month Chart
-        $kerugianBulananData = (clone $baseQuery)
-            ->select(DB::raw('MONTH(tanggal_lhp) as month'), DB::raw('SUM(besaran_temuan) as total_kerugian'))
-            ->groupBy('month')->orderBy('month')->pluck('total_kerugian', 'month')->all();
-        
+        $kerugianBulananData = Temuan::whereIn('lhp_id', (clone $baseQuery)->pluck('id'))
+            ->join('rekomendasis', 'temuans.id', '=', 'rekomendasis.temuan_id')
+            ->join('lhps', 'temuans.lhp_id', '=', 'lhps.id')
+            ->select(
+                DB::raw('MONTH(lhps.tanggal_lhp) as month'),
+                DB::raw('SUM(rekomendasis.besaran_temuan) as total_kerugian')
+            )
+            ->groupBy('month')
+            ->orderBy('month')
+            ->pluck('total_kerugian', 'month')->all();
+
         // 3. Status Penyelesaian Chart
         $statusPenyelesaianData = (clone $baseQuery)
             ->select('status_penyelesaian', DB::raw('COUNT(*) as count'))

@@ -7,10 +7,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
 use App\Models\PerintahTugas;
+use App\Models\Temuan;
+use App\Models\Rekomendasi;
+use App\Models\TindakLanjut;
+use \Staudenmeir\EloquentHasManyDeep\HasRelationships;
 
 class Lhp extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, HasRelationships;
 
     /**
      * The attributes that are mass assignable.
@@ -22,7 +26,9 @@ class Lhp extends Model
         'nomor_lhp',
         'judul_lhp',
         'nomor_surat_tugas',
-        'tanggal_penugasan',
+        'tgl_surat_tugas',
+        'tgl_awal_penugasan',
+        'tgl_akhir_penugasan',
         'lama_penugasan',
         'user_id',
         'file_lhp',
@@ -30,9 +36,7 @@ class Lhp extends Model
         'file_kertas_kerja',
         'file_review_sheet',
         'file_nota_dinas',
-        'temuan',
-        'rincian_rekomendasi',
-        'besaran_temuan',
+        'file_p2hp',
         'tindak_lanjut',
     ];
 
@@ -43,7 +47,9 @@ class Lhp extends Model
      */
     protected $casts = [
         'tanggal_lhp' => 'date',
-        'tanggal_penugasan' => 'date',
+        'tgl_surat_tugas' => 'date',
+        'tgl_awal_penugasan' => 'date',
+        'tgl_akhir_penugasan' => 'date',
     ];
 
     /**
@@ -54,13 +60,6 @@ class Lhp extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the tindak lanjut records for the LHP.
-     */
-    public function tindakLanjuts()
-    {
-        return $this->hasMany(TindakLanjut::class);
-    }
     /**
      * Get the tim records for the LHP.
      */
@@ -81,6 +80,22 @@ class Lhp extends Model
             'id',
             'id',
             'pegawai_id'
+        );
+    }
+
+    /**
+     * Get the temuan records for the LHP.
+     */
+    public function temuans()
+    {
+        return $this->hasMany(Temuan::class);
+    }
+
+    public function tindakLanjuts()
+    {
+        return $this->hasManyDeep(
+            TindakLanjut::class,
+            [Temuan::class, Rekomendasi::class],
         );
     }
 }

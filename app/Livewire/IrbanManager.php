@@ -49,11 +49,11 @@ class IrbanManager extends Component
         $query = User::where('role', 'irban')
             ->when($this->search, function ($q) {
                 $q->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('email', 'like', '%' . $this->search . '%');
+                    ->orWhere('email', 'like', '%' . $this->search . '%');
             });
 
         $irbans = $query->orderBy($this->sortField, $this->sortDirection)->paginate(10);
-        
+
         // Fetch Pegawai for the modal dropdown, excluding those already assigned as Irban
         $existingIrbanPegawaiIds = User::where('role', 'irban')->pluck('pegawai_id')->filter();
         $pegawai = Pegawai::whereNotIn('id', $existingIrbanPegawaiIds)->get();
@@ -113,14 +113,22 @@ class IrbanManager extends Component
 
         User::updateOrCreate(['id' => $this->irban_id], $userData);
 
-        $this->dispatch('notify', ['type' => 'success', 'message' => $this->irban_id ? 'Data Irban berhasil diperbarui.' : 'Irban baru berhasil ditambahkan.']);
+        $this->dispatch('notify', type: 'success', message: $this->irban_id ? 'Data Irban berhasil diperbarui.' : 'Irban baru berhasil ditambahkan.');
         $this->closeModal();
     }
 
     public function delete($id)
     {
         User::find($id)->delete();
-        $this->dispatch('notify', ['type' => 'success', 'message' => 'Data Irban berhasil dihapus.']);
+        $this->dispatch('notify', type: 'success', message: 'Data Irban berhasil dihapus.');
+    }
+
+    public function resetPassword($id)
+    {
+        $irban = User::findOrFail($id);
+        $irban->password = Hash::make('12345678');
+        $irban->save();
+        $this->dispatch('notify', type: 'success', message: 'Kata sandi Irban berhasil direset.');
     }
 
     public function closeModal()

@@ -17,18 +17,35 @@ class LhpManager extends Component
     public $sortField = 'tanggal_lhp';
     public $sortDirection = 'desc';
     public $statusFilter = '';
+    public $perPage = 10;
 
     // Modal Properties
     public $isModalOpen = false;
     public $lhp_id;
-    public $judul_lhp, $user_id, $nomor_lhp, $tanggal_lhp, $nomor_surat_tugas, $tanggal_penugasan, $lama_penugasan;
+    public $form = [];
 
     protected $queryString = [
         'search' => ['except' => ''],
         'sortField' => ['except' => 'tanggal_lhp'],
         'sortDirection' => ['except' => 'desc'],
         'statusFilter' => ['except' => ''],
+        'perPage' => ['except' => 10],
     ];
+
+    public function mount()
+    {
+        $this->form = [
+            'judul_lhp' => '',
+            'user_id' => '',
+            'nomor_lhp' => '',
+            'tanggal_lhp' => '',
+            'nomor_surat_tugas' => '',
+            'tgl_surat_tugas' => '',
+            'tgl_awal_penugasan' => '',
+            'tgl_akhir_penugasan' => '',
+            'status_penyelesaian' => 'belum_ditindaklanjuti',
+        ];
+    }
 
     public function sortBy($field)
     {
@@ -40,28 +57,31 @@ class LhpManager extends Component
         $this->sortField = $field;
     }
 
-    public function updatingSearch() { $this->resetPage(); }
-    public function updatingStatusFilter() { $this->resetPage(); }
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+    public function updatingStatusFilter()
+    {
+        $this->resetPage();
+    }
 
     public function render()
     {
-        $query = Lhp::with('user')
-            ->when($this->search, fn ($q) => $q->where('judul_lhp', 'like', '%' . $this->search . '%')->orWhere('nomor_lhp', 'like', '%' . $this->search . '%'))
-            ->when($this->statusFilter, function ($q) {
-                if ($this->statusFilter === 'selesai') $q->whereNotNull('file_lhp');
-                elseif ($this->statusFilter === 'proses') $q->whereNull('file_lhp');
-            });
+        $query = Lhp::with('user', 'temuans')
+            ->when($this->search, fn($q) => $q->where('judul_lhp', 'like', '%' . $this->search . '%')->orWhere('nomor_lhp', 'like', '%' . $this->search . '%'))
+            ->when($this->statusFilter, fn($q) => $q->where('status_penyelesaian', $this->statusFilter));
 
-            if(Auth::user()->role === 'irban') {
-                $query->where('user_id', Auth::user()->id);
-            }
+        if (Auth::user()->role === 'irban') {
+            $query->where('user_id', Auth::user()->id);
+        }
 
-        $lhps = $query->orderBy($this->sortField, $this->sortDirection)->paginate(10);
-        $irbans = User::where('role', 'irban')->get();
+        $lhps = $query->orderBy($this->sortField, $this->sortDirection)->paginate($this->perPage);
+        $users = User::where('role', 'irban')->get();
 
         return view('livewire.lhp-manager', [
             'lhps' => $lhps,
-            'irbans' => $irbans
+            'users' => $users,
         ])->layout('components.layouts.app', ['title' => 'Manajemen LHP']);
     }
 
@@ -69,50 +89,95 @@ class LhpManager extends Component
     public function create()
     {
         $this->resetForm();
+        $this->lhp_id = null;
         $this->isModalOpen = true;
+        $this->dispatch('open-modal');
     }
 
     public function edit($id)
     {
         $lhp = Lhp::findOrFail($id);
         $this->lhp_id = $id;
-        $this->judul_lhp = $lhp->judul_lhp;
-        $this->user_id = $lhp->user_id;
-        $this->nomor_lhp = $lhp->nomor_lhp;
-        $this->tanggal_lhp = $lhp->tanggal_lhp->format('Y-m-d');
-        $this->nomor_surat_tugas = $lhp->nomor_surat_tugas;
-        $this->tanggal_penugasan = $lhp->tanggal_penugasan->format('Y-m-d');
-        $this->lama_penugasan = $lhp->lama_penugasan;
+        $this->form = [
+            'judul_lhp' => $lhp->judul_lhp,
+            'user_id' => $lhp->user_id,
+            'nomor_lhp' => $lhp->nomor_lhp,
+            'tanggal_lhp' => $lhp->tanggal_lhp->format('Y-m-d'),
+            'nomor_surat_tugas' => $lhp->nomor_surat_tugas,
+            'tgl_surat_tugas' => optional($lhp->tgl_surat_tugas)->format('Y-m-d'),
+            'tgl_awal_penugasan' => optional($lhp->tgl_awal_penugasan)->format('Y-m-d'),
+            'tgl_akhir_penugasan' => optional($lhp->tgl_akhir_penugasan)->format('Y-m-d'),
+            'status_penyelesaian' => $lhp->status_penyelesaian,
+        ];
         $this->isModalOpen = true;
+        $this->dispatch('open-modal');
     }
 
     public function store()
     {
         $validatedData = $this->validate([
-            'judul_lhp' => 'required|string|max:255',
-            'user_id' => 'required|exists:users,id',
-            'nomor_lhp' => 'required|string|max:255',
-            'tanggal_lhp' => 'required|date',
-            'nomor_surat_tugas' => 'required|string|max:255',
-            'tanggal_penugasan' => 'required|date',
-            'lama_penugasan' => 'required|integer|min:1',
+            'form.judul_lhp' => 'required|string|max:255',
+            'form.user_id' => 'required|exists:users,id',
+            'form.nomor_lhp' => 'required|string|max:255',
+            'form.tanggal_lhp' => 'required|date',
+            'form.nomor_surat_tugas' => 'nullable|string|max:255',
+            'form.tgl_surat_tugas' => 'nullable|date',
+            'form.tgl_awal_penugasan' => 'nullable|date',
+            'form.tgl_akhir_penugasan' => 'nullable|date|after_or_equal:form.tgl_awal_penugasan',
+            'form.status_penyelesaian' => 'required|in:belum_ditindaklanjuti,dalam_proses,sesuai',
         ]);
 
-        Lhp::updateOrCreate(['id' => $this->lhp_id], $validatedData);
+        Lhp::create($validatedData['form']);
 
-        // UPDATED: Changed from session()->flash() to dispatch()
-        $message = $this->lhp_id ? 'LHP berhasil diperbarui.' : 'LHP berhasil dibuat.';
-        $this->dispatch('notify', ['type' => 'success', 'message' => $message]);
+        $message = 'LHP berhasil dibuat.';
+        $this->dispatch('notify', type: 'success', message: $message);
 
         $this->closeModal();
+    }
+
+    public function update()
+    {
+        $validatedData = $this->validate([
+            'form.judul_lhp' => 'required|string|max:255',
+            'form.user_id' => 'required|exists:users,id',
+            'form.nomor_lhp' => 'required|string|max:255',
+            'form.tanggal_lhp' => 'required|date',
+            'form.nomor_surat_tugas' => 'nullable|string|max:255',
+            'form.tgl_surat_tugas' => 'nullable|date',
+            'form.tgl_awal_penugasan' => 'nullable|date',
+            'form.tgl_akhir_penugasan' => 'nullable|date|after_or_equal:form.tgl_awal_penugasan',
+            'form.status_penyelesaian' => 'required|in:belum_ditindaklanjuti,dalam_proses,sesuai',
+        ]);
+
+        $lhp = Lhp::findOrFail($this->lhp_id);
+        $lhp->update($validatedData['form']);
+        $message = 'LHP berhasil diperbarui.';
+        $this->dispatch('notify', type: 'success', message: $message);
+
+        $this->closeModal();
+    }
+
+    public function updateStatus($lhpId, $status)
+    {
+        if (auth()->user()->role !== 'admin') {
+            $this->dispatch('notify', type: 'error', message: 'Anda tidak memiliki izin untuk mengubah status.');
+            return;
+        }
+
+        $lhp = Lhp::find($lhpId);
+        if ($lhp) {
+            $lhp->status_penyelesaian = $status;
+            $lhp->save();
+            $this->dispatch('notify', type: 'success', message: 'Status LHP berhasil diperbarui.');
+        }
     }
 
     public function delete($id)
     {
         Lhp::find($id)->delete();
-        
+
         // UPDATED: Changed from session()->flash() to dispatch()
-        $this->dispatch('notify', ['type' => 'success', 'message' => 'LHP berhasil dihapus.']);
+        $this->dispatch('notify', type: 'success', message: 'LHP berhasil dihapus.');
     }
 
     public function closeModal()
@@ -121,8 +186,8 @@ class LhpManager extends Component
         $this->resetForm();
     }
 
-    private function resetForm()
+    public function resetForm()
     {
-        $this->reset(['lhp_id', 'judul_lhp', 'user_id', 'nomor_lhp', 'tanggal_lhp', 'nomor_surat_tugas', 'tanggal_penugasan', 'lama_penugasan']);
+        $this->mount();
     }
 }

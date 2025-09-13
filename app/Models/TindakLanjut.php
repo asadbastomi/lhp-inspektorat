@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+
 class TindakLanjut extends Model
 {
     /**
@@ -16,13 +17,12 @@ class TindakLanjut extends Model
      */
     use HasUuids;
     protected $fillable = [
-        'lhp_id',
+        'rekomendasi_id',
+        'uraian',
+        'tanggal',
         'file_name',
         'file_path',
-        'file_type',
-        'mime_type',
         'file_size',
-        'description',
     ];
 
     /**
@@ -37,11 +37,11 @@ class TindakLanjut extends Model
     ];
 
     /**
-     * Get the LHP that owns the TindakLanjut
+     * Get the Rekomendasi that owns the TindakLanjut
      */
-    public function lhp(): BelongsTo
+    public function rekomendasi(): BelongsTo
     {
-        return $this->belongsTo(Lhp::class);
+        return $this->belongsTo(Rekomendasi::class);
     }
 
     /**
@@ -78,7 +78,7 @@ class TindakLanjut extends Model
     public function getFormattedFileSizeAttribute(): string
     {
         $bytes = $this->file_size;
-        
+
         if ($bytes >= 1073741824) {
             return number_format($bytes / 1073741824, 2) . ' GB';
         } elseif ($bytes >= 1048576) {
@@ -125,19 +125,4 @@ class TindakLanjut extends Model
     {
         return in_array($this->file_type, ['audio', 'video']);
     }
-
-    /**
-     * The accessors to append to the model's array form.
-     *
-     * @var array
-     */
-    protected $appends = [
-        'file_url',
-        'file_icon',
-        'formatted_file_size',
-        'is_image',
-        'is_pdf',
-        'is_document',
-        'is_media',
-    ];
 }

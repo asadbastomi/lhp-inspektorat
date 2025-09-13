@@ -1,245 +1,141 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Sistem Monitoring Laporan' }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
     @stack('styles')
-
-    <style>
-        /* Your Full app.css Configuration */
-        :root {
-            --color-primary: #a8d8ea; /* Light Blue */
-            --color-secondary: #f8b195; /* Peach */
-            --color-accent: #f67280;   /* Coral Pink */
-            --color-light: #f8f9fa;
-            --color-dark: #2c3e50;     /* Dark Slate Blue */
-        }
-
-        /* Using @layer is best with a build step, but for CDN this works */
-        /* Base Styles */
-        * {
-            transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
-            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-            transition-duration: 200ms;
-        }
-        
-        body {
-            background: linear-gradient(to bottom right, #eff6ff 0%, #fdf2f8 100%);
-            min-height: 100vh;
-            font-family: 'Inter', sans-serif;
-            color: var(--color-dark);
-        }
-        
-        ::-webkit-scrollbar { width: 0.5rem; }
-        ::-webkit-scrollbar-track { background-color: transparent; }
-        ::-webkit-scrollbar-thumb { background-color: #bfdbfe; border-radius: 9999px; }
-        ::-webkit-scrollbar-thumb:hover { background-color: #93c5fd; }
-        
-        /* Component Styles */
-        .card {
-            background-color: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-radius: 1.25rem;
-            padding: 2rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            font-weight: 600;
-            transform: translateZ(0);
-            border-radius: 0.75rem;
-            border: none;
-            cursor: pointer;
-        }
-        
-        .btn:hover { transform: scale(1.03) translateZ(0); }
-        .btn:active { transform: scale(0.97) translateZ(0); }
-        
-        .btn-primary {
-            background-color: #1B5E20; /* Emerald Green */
-            color: white;
-            transition: all 0.2s ease-in-out;
-        }
-        .btn-primary:hover {
-            background-color: #388E3C; /* Moss Green */
-            box-shadow: 0 4px 15px rgba(27, 94, 32, 0.2);
-            transform: scale(1.05);
-        }
-        
-        .btn-secondary {
-            background-color: #e2e8f0; /* gray-200 */
-            color: #475569; /* gray-600 */
-            transition: all 0.2s ease-in-out;
-        }
-        .btn-secondary:hover {
-            background-color: #cbd5e1; /* gray-300 */
-        }
-    </style>
 </head>
-<body class="antialiased">
-    <header class="sticky top-0 z-40">
-        <nav class="container mx-auto my-4 px-6 py-3 card flex justify-between items-center">
-            <a href="{{ route('dashboard') }}" class="text-xl font-bold text-[--color-dark]">
-                <i class="fas fa-rocket text-[--color-accent]"></i> INSPEKTORAT
-            </a>
-            <div class="hidden md:flex items-center gap-6 text-sm font-medium text-[--color-dark]">
-                <a href="{{ route('dashboard') }}" class="hover:text-[--color-accent] transition {{ request()->routeIs('dashboard') ? 'text-[--color-accent] font-semibold' : '' }}">Dashboard</a>
-                <!-- FIX: Menu items are now conditional based on user role -->
-                @if(auth()->user()->role === 'admin')
-                <a href="{{ route('jabatan') }}" class="hover:text-[--color-accent] transition {{ request()->routeIs('jabatan*') ? 'text-[--color-accent] font-semibold' : '' }}">Jabatan</a>
-                <a href="{{ route('irbans') }}" class="hover:text-[--color-accent] transition {{ request()->routeIs('irbans*') ? 'text-[--color-accent] font-semibold' : '' }}">Irban</a>
-                @endif
-                @if(auth()->user()->role === 'admins')
-                <a href="{{ route('jabatan-tim') }}" class="hover:text-[--color-accent] transition {{ request()->routeIs('jabatan-tim*') ? 'text-[--color-accent] font-semibold' : '' }}">Jabatan Tim</a>
-                @endif
-                <a href="{{ route('lhps') }}" class="hover:text-[--color-accent] transition {{ request()->routeIs('lhps*') ? 'text-[--color-accent] font-semibold' : '' }}">LHP</a>
-            </div>
-            <div class="relative" x-data="{ open: false }">
-                <button @click="open = !open" class="flex items-center gap-2 text-[--color-dark]">
-                    <span>{{ Auth::user()->name ?? 'Admin' }}</span>
-                    <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': open }"></i>
-                </button>
-                <div x-show="open" @click.away="open = false" x-cloak class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-1">
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</button>
-                    </form>
-                </div>
-            </div>
-        </nav>
-    </header>
 
-    <main class="relative z-10">
-        {{ $slot }}
-    </main>
-    
+<body class="bg-gray-50 dark:bg-gray-900 font-sans antialiased">
+    <div x-data="{ sidebarOpen: false }">
+        <x-sidebar />
+
+        <div class="md:ml-72 transition-all duration-300 ease-in-out">
+            <!-- Mobile Header -->
+            <header
+                class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 md:hidden">
+                <div class="flex items-center justify-between px-4 py-3">
+                    <button @click="sidebarOpen = true"
+                        class="p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <i class="fas fa-bars text-lg"></i>
+                    </button>
+
+                    <div class="flex items-center space-x-2">
+                        <div
+                            class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-rocket text-white text-xs"></i>
+                        </div>
+                        <span class="font-bold text-gray-900 dark:text-white">Inspektorat</span>
+                    </div>
+
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open"
+                            class="p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                            <i class="fas fa-user-circle text-lg"></i>
+                        </button>
+                        <div x-show="open" @click.away="open = false" x-cloak
+                            class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 py-2">
+                            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ Auth::user()->name }}
+                                </p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ Str::title(Auth::user()->role) }}
+                                </p>
+                            </div>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit"
+                                    class="flex items-center w-full px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                    <i class="fas fa-sign-out-alt mr-3"></i>
+                                    Keluar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Desktop Header (minimal) -->
+            <header
+                class="hidden md:block sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-end px-6 py-4">
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open"
+                            class="flex items-center gap-3 p-2 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                            <div
+                                class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                {{ substr(Auth::user()->name, 0, 1) }}
+                            </div>
+                            <div class="hidden lg:block text-left">
+                                <p class="text-sm font-medium">{{ Auth::user()->name }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ Str::title(Auth::user()->role) }}
+                                </p>
+                            </div>
+                            <i class="fas fa-chevron-down text-xs transition-transform"
+                                :class="{ 'rotate-180': open }"></i>
+                        </button>
+                        <div x-show="open" @click.away="open = false" x-cloak
+                            class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 py-2">
+                            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ Auth::user()->name }}
+                                </p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ Str::title(Auth::user()->role) }}
+                                </p>
+                            </div>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit"
+                                    class="flex items-center w-full px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                    <i class="fas fa-sign-out-alt mr-3"></i>
+                                    Keluar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="p-4 md:p-6 lg:p-8">
+                {{ $slot }}
+            </main>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- Global notification handler -->
     <script>
         document.addEventListener('livewire:initialized', () => {
-            console.log('Livewire initialized in main layout');
-            
-            // Listen for Livewire flash messages
-            Livewire.on('notify', (data) => {
-                console.log('Notification event received in main layout:', data);
-                
-                // Handle both direct object and array-wrapped data
-                let notificationData = {};
-                
-                if (Array.isArray(data) && data.length > 0) {
-                    // If data is an array, use the first element
-                    notificationData = data[0] || {};
-                } else if (typeof data === 'object' && data !== null) {
-                    // If data is an object, use it directly
-                    notificationData = data;
-                }
-                
-                // Extract values with defaults
-                const type = notificationData.type || 'info';
-                const title = notificationData.title || (type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Info');
-                const message = notificationData.message || (type === 'error' ? 'An error occurred' : '');
-                const timer = notificationData.timer || (type === 'error' ? 5000 : 3000);
-                
+            Livewire.on('notify', data => {
                 const Toast = Swal.mixin({
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
-                    timer: timer,
+                    timer: 3000,
                     timerProgressBar: true,
                     didOpen: (toast) => {
-                        toast.addEventListener('mouseenter', Swal.stopTimer);
-                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
                     }
                 });
-                
-                // For toast notifications, combine title and message for better display
-                const toastTitle = title;
-                const toastHtml = message ? `<div class="text-sm mt-1">${message}</div>` : '';
-                
-                console.log('Showing notification in main layout:', { type, title, message, timer });
-                
-                const toast = Toast.fire({
-                    icon: type,
-                    title: toastTitle,
-                    html: toastHtml
-                });
-                
-                toast.then((result) => {
-                    // Handle toast close if needed
-                }).catch((error) => {
-                    console.error('Toast error in main layout:', error);
+
+                Toast.fire({
+                    icon: data.type || 'success',
+                    title: data.message || 'Berhasil!'
                 });
             });
-            
-            // Handle session flash messages
-            @if (session('success'))
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil!',
-                    text: '{{ session('success') }}',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true
-                });
-            @endif
-
-            @if (session('error'))
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal!',
-                    text: '{{ session('error') }}',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 5000,
-                    timerProgressBar: true
-                });
-            @endif
-
-            @if (session('info'))
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Informasi',
-                    text: '{{ session('info') }}',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true
-                });
-            @endif
-
-            @if ($errors->any())
-                @foreach ($errors->all() as $error)
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error Validasi',
-                        text: '{{ $error }}',
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 5000,
-                        timerProgressBar: true
-                    });
-                @endforeach
-            @endif
         });
     </script>
     @livewireScripts
     @stack('scripts')
 </body>
+
 </html>
