@@ -14,7 +14,7 @@ use App\Livewire\Report\LhpReport;
 //     return view('welcome');
 // })->name('home');
 
-Route::view('/', 'welcome');
+Route::redirect('/', '/login');
 Route::get('dashboard', \App\Livewire\Dashboard::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
