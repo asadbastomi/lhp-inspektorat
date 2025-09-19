@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('lhps', function (Blueprint $table) {
             $table->date('tgl_surat_tugas')->nullable()->after('nomor_surat_tugas');
-            $table->date('tgl_awal_penugasan')->nullable()->after('lama_penugasan');
+            $table->date('tgl_awal_penugasan')->nullable()->after('tgl_surat_tugas');
             $table->date('tgl_akhir_penugasan')->nullable()->after('tgl_awal_penugasan');
         });
     }

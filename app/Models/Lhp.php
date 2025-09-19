@@ -29,7 +29,6 @@ class Lhp extends Model
         'tgl_surat_tugas',
         'tgl_awal_penugasan',
         'tgl_akhir_penugasan',
-        'lama_penugasan',
         'user_id',
         'file_lhp',
         'file_surat_tugas',
