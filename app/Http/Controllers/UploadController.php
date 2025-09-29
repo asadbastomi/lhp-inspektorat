@@ -18,6 +18,11 @@ class UploadController extends Controller
         $this->middleware(['auth']);
     }
 
+    private function getStorageDisk()
+    {
+        return app()->environment('local') ? 'public' : 'minio';
+    }
+
     public function livewireUpload(Request $request)
     {
         Log::info('Upload request received', $request->except('file'));
@@ -69,13 +74,14 @@ class UploadController extends Controller
     private function handleDokumenUpload(Request $request, $file, $lhpId, $fieldName)
     {
         $request->validate(['file' => 'mimes:pdf']);
+        $disk = $this->getStorageDisk();
         $lhp = Lhp::findOrFail($lhpId);
 
-        if ($lhp->$fieldName && Storage::disk('public')->exists($lhp->$fieldName)) {
-            Storage::disk('public')->delete($lhp->$fieldName);
+        if ($lhp->$fieldName && Storage::disk($disk)->exists($lhp->$fieldName)) {
+            Storage::disk($disk)->delete($lhp->$fieldName);
         }
 
-        $path = $file->store('lhp-documents', 'public');
+        $path = $file->store('lhp-documents', $disk);
         $lhp->$fieldName = $path;
         $lhp->save();
 
@@ -91,7 +97,8 @@ class UploadController extends Controller
         $description = $request->input('description');
         $tindakLanjutId = $request->input('tindak_lanjut_id'); // Get the ID for editing
 
-        $path = $file->store('tindak-lanjut', 'public');
+        $disk = $this->getStorageDisk();
+        $path = $file->store('tindak-lanjut', $disk);
 
         $data = [
             'rekomendasi_id' => $rekomendasiId,
@@ -107,8 +114,9 @@ class UploadController extends Controller
             // Update existing record
             $tindakLanjut = TindakLanjut::findOrFail($tindakLanjutId);
             // Delete old file before updating
-            if ($tindakLanjut->file_path && Storage::disk('public')->exists($tindakLanjut->file_path)) {
-                Storage::disk('public')->delete($tindakLanjut->file_path);
+            $disk = $this->getStorageDisk();
+            if ($tindakLanjut->file_path && Storage::disk($disk)->exists($tindakLanjut->file_path)) {
+                Storage::disk($disk)->delete($tindakLanjut->file_path);
             }
             $tindakLanjut->update($data);
             Log::info('Tindak Lanjut updated successfully', ['id' => $tindakLanjutId]);

@@ -221,7 +221,7 @@
                                     class="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-200 dark:border-green-700">
                                     <div class="flex items-center justify-center space-x-3">
                                         <i class="fas fa-check-circle text-green-600 dark:text-green-400"></i>
-                                        <a href="{{ Storage::url($lhp->$field) }}" target="_blank"
+                                        <a href="{{ asset_minio($lhp->$field) }}" target="_blank"
                                             class="text-sm font-medium text-green-700 dark:text-green-300 hover:text-green-800 dark:hover:text-green-200 truncate max-w-[150px]"
                                             title="{{ basename($lhp->$field) }}">
                                             {{ Str::limit(basename($lhp->$field), 20) }}
@@ -417,7 +417,7 @@
                                                             <div class="flex items-center space-x-2 ml-4">
                                                                 @if ($tindakLanjut->file_path)
                                                                     <button
-                                                                        wire:click="openFilePreviewModal('{{ Storage::url($tindakLanjut->file_path) }}')"
+                                                                        wire:click="openFilePreviewModal('{{ asset_minio($tindakLanjut->file_path) }}')"
                                                                         class="p-1.5 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-all duration-200"
                                                                         title="Lihat File">
                                                                         <i class="fas fa-eye text-sm"></i>

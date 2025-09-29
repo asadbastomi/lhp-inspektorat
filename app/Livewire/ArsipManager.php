@@ -122,6 +122,11 @@ class ArsipManager extends Component
         ])->layout('components.layouts.app', ['title' => 'Manajemen Arsip Dokumen']);
     }
 
+    private function getStorageDisk()
+    {
+        return app()->environment('local') ? 'public' : 'minio';
+    }
+
     private function getBpkRiArsips()
     {
         if ($this->activeTab !== 'bpk_ri') {
@@ -191,10 +196,12 @@ class ArsipManager extends Component
         // Update validation rule for file when editing
         if ($this->arsip_id) {
             $this->rules['form.file'] = 'nullable|file|max:204800|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip,rar';
+            $disk = $this->getStorageDisk();
         }
 
         $this->validate();
 
+        $disk = $this->getStorageDisk();
         $model = $this->activeTab === 'bpk_ri' ? ArsipBpkRi::class : ArsipBpkp::class;
         $directory = $this->activeTab === 'bpk_ri' ? 'arsip/bpk-ri' : 'arsip/bpkp';
 
@@ -206,7 +213,7 @@ class ArsipManager extends Component
         if ($this->form['file']) {
             $file = $this->form['file'];
             $fileName = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-            $filePath = $file->storeAs($directory, $fileName, 'public');
+            $filePath = $file->storeAs($directory, $fileName, $disk);
 
             $data = array_merge($data, [
                 'file_name' => $file->getClientOriginalName(),
@@ -214,12 +221,13 @@ class ArsipManager extends Component
                 'file_type' => $file->getMimeType(),
                 'file_size' => $file->getSize(),
             ]);
+            $disk = $this->getStorageDisk();
 
             // Delete old file if editing
             if ($this->arsip_id) {
                 $oldArsip = $model::find($this->arsip_id);
-                if ($oldArsip && Storage::disk('public')->exists($oldArsip->file_path)) {
-                    Storage::disk('public')->delete($oldArsip->file_path);
+                if ($oldArsip && Storage::disk($disk)->exists($oldArsip->file_path)) {
+                    Storage::disk($disk)->delete($oldArsip->file_path);
                 }
             }
         }
@@ -236,12 +244,13 @@ class ArsipManager extends Component
     public function delete($id)
     {
         try {
+            $disk = $this->getStorageDisk();
             $model = $this->activeTab === 'bpk_ri' ? ArsipBpkRi::class : ArsipBpkp::class;
             $arsip = $model::findOrFail($id);
 
             // Delete file from storage
-            if (Storage::disk('public')->exists($arsip->file_path)) {
-                Storage::disk('public')->delete($arsip->file_path);
+            if (Storage::disk($disk)->exists($arsip->file_path)) {
+                Storage::disk($disk)->delete($arsip->file_path);
             }
 
             $arsip->delete();
@@ -255,11 +264,12 @@ class ArsipManager extends Component
 
     public function download($id)
     {
+        $disk = $this->getStorageDisk();
         $model = $this->activeTab === 'bpk_ri' ? ArsipBpkRi::class : ArsipBpkp::class;
         $arsip = $model::findOrFail($id);
 
-        if (Storage::disk('public')->exists($arsip->file_path)) {
-            return Storage::disk('public')->download($arsip->file_path, $arsip->file_name);
+        if (Storage::disk($disk)->exists($arsip->file_path)) {
+            return Storage::disk($disk)->download($arsip->file_path, $arsip->file_name);
         }
 
         $this->dispatch('notify', type: 'error', message: 'File tidak ditemukan.');
@@ -267,10 +277,11 @@ class ArsipManager extends Component
 
     public function preview($id)
     {
+        $disk = $this->getStorageDisk();
         $model = $this->activeTab === 'bpk_ri' ? ArsipBpkRi::class : ArsipBpkp::class;
         $arsip = $model::findOrFail($id);
 
-        if (Storage::disk('public')->exists($arsip->file_path)) {
+        if (Storage::disk($disk)->exists($arsip->file_path)) {
             $this->previewFile = $arsip;
             $this->isPreviewOpen = true;
         } else {

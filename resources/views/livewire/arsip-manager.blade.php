@@ -1,7 +1,3 @@
-@php
-    use Illuminate\Support\Facades\Storage;
-@endphp
-
 <div class="space-y-8">
     <!-- Modern Hero Header -->
     <div
@@ -483,10 +479,10 @@
                     <!-- Preview Content -->
                     <div class="p-6 max-h-96 overflow-auto">
                         @if ($previewFile->is_pdf)
-                            <iframe src="{{ Storage::url($previewFile->file_path) }}"
+                            <iframe src="{{ asset_minio($previewFile->file_path) }}"
                                 class="w-full h-96 rounded-lg border"></iframe>
                         @elseif($previewFile->is_image)
-                            <img src="{{ Storage::url($previewFile->file_path) }}"
+                            <img src="{{ asset_minio($previewFile->file_path) }}"
                                 alt="{{ $previewFile->file_name }}" class="max-w-full h-auto rounded-lg mx-auto">
                         @else
                             <div class="text-center py-12">
